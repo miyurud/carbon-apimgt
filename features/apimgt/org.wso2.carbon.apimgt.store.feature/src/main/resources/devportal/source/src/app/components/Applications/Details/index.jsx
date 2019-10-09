@@ -18,9 +18,7 @@
 
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-import {
-    Route, Switch, Redirect, Link,
-} from 'react-router-dom';
+import { Route, Switch, Redirect, Link } from 'react-router-dom';
 import { withStyles } from '@material-ui/core/styles';
 import API from 'AppData/api';
 import { PageNotFound } from 'AppComponents/Base/Errors/index';
@@ -204,8 +202,8 @@ class Details extends Component {
                             <CustomIcon width={52} height={52} icon='applications' />
                         </div>
                     </Link>
-                    <LeftMenuItem text='productionkeys' handleMenuSelect={this.handleMenuSelect} active={active} />
-                    <LeftMenuItem text='sandBoxkeys' handleMenuSelect={this.handleMenuSelect} active={active} />
+                    <LeftMenuItem text='production keys' handleMenuSelect={this.handleMenuSelect} active={active} />
+                    <LeftMenuItem text='sandbox keys' handleMenuSelect={this.handleMenuSelect} active={active} />
                     <LeftMenuItem text='subscriptions' handleMenuSelect={this.handleMenuSelect} active={active} />
                 </div>
                 <div className={classes.content}>

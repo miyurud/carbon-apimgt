@@ -59,7 +59,7 @@ class ApiTableView extends React.Component {
         super(props);
         this.state = {
             data: null,
-            loading: false,
+            loading: true,
         };
         this.page = 0;
         this.count = 100;
@@ -174,7 +174,9 @@ class ApiTableView extends React.Component {
         const { page, rowsPerPage } = this;
         const { apiType } = this.context;
         const api = new API();
-        if (query) {
+        const searchParam = new URLSearchParams(query);
+        const searchQuery = searchParam.get('query');
+        if (query && searchQuery !== null) {
             const composeQuery = queryString.parse(query);
             composeQuery.limit = this.rowsPerPage;
             composeQuery.offset = page * rowsPerPage;
@@ -217,7 +219,8 @@ class ApiTableView extends React.Component {
      * @memberof ApiTableView
      */
     render() {
-        const { intl, gridView, loading } = this.props;
+        const { intl, gridView } = this.props;
+        const { loading } = this.state;
         const columns = [
             {
                 name: 'id',
@@ -244,7 +247,7 @@ class ApiTableView extends React.Component {
                 name: 'name',
                 label: intl.formatMessage({
                     id: 'Apis.Listing.ApiTableView.name',
-                    defaultMessage: 'name',
+                    defaultMessage: 'Name',
                 }),
                 options: {
                     customBodyRender: (value, tableMeta, updateValue, tableViewObj = this) => {
@@ -284,14 +287,14 @@ class ApiTableView extends React.Component {
                 name: 'version',
                 label: intl.formatMessage({
                     id: 'Apis.Listing.ApiTableView.version',
-                    defaultMessage: 'version',
+                    defaultMessage: 'Version',
                 }),
             },
             {
                 name: 'context',
                 label: intl.formatMessage({
                     id: 'Apis.Listing.ApiTableView.context',
-                    defaultMessage: 'context',
+                    defaultMessage: 'Context',
                 }),
                 options: {
                     sort: false,
@@ -301,7 +304,7 @@ class ApiTableView extends React.Component {
                 name: 'provider',
                 label: intl.formatMessage({
                     id: 'Apis.Listing.ApiTableView.provider',
-                    defaultMessage: 'provider',
+                    defaultMessage: 'Provider',
                 }),
                 options: {
                     sort: false,
@@ -311,7 +314,7 @@ class ApiTableView extends React.Component {
                 name: 'type',
                 label: intl.formatMessage({
                     id: 'Apis.Listing.ApiTableView.type',
-                    defaultMessage: 'type',
+                    defaultMessage: 'Type',
                 }),
                 options: {
                     sort: false,
@@ -321,7 +324,7 @@ class ApiTableView extends React.Component {
                 name: 'rating',
                 label: intl.formatMessage({
                     id: 'Apis.Listing.ApiTableView.rating',
-                    defaultMessage: 'rating',
+                    defaultMessage: 'Rating',
                 }),
                 options: {
                     customBodyRender: (value, tableMeta, updateValue, tableViewObj = this) => {
@@ -401,6 +404,8 @@ class ApiTableView extends React.Component {
             options.download = false;
             options.viewColumns = false;
             options.customToolbar = false;
+        } else {
+            options.filter = false;
         }
         if (page === 0 && this.count <= rowsPerPage) {
             options.pagination = false;

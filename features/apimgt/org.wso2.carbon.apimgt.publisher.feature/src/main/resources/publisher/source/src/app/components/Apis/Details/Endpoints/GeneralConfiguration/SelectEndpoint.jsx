@@ -17,18 +17,40 @@
  */
 
 import React from 'react';
+import { useAPI } from 'AppComponents/Apis/Details/components/ApiContext';
 import { TextField, MenuItem } from '@material-ui/core';
 import { FormattedMessage } from 'react-intl';
 import PropTypes from 'prop-types';
+import { endpointsToList } from '../endpointUtils';
 
 export default function SelectEndpoint(props) {
     const {
-        endpoints,
         onChange,
+        onBlur,
         endpoint,
+        isEndpointEmpty,
     } = props;
+    const [apiFromContext] = useAPI();
+    let endpoints = [];
+    if (apiFromContext.endpointConfig !== null) {
+        endpoints = endpointsToList(apiFromContext.endpointConfig);
+    }
+    const iff = (condition, then, otherwise) => (condition ? then : otherwise);
     return (
         <TextField
+            autoFocus
+            error={isEndpointEmpty || endpoints.length === 0}
+            helperText={endpoints.length === 0 ? <FormattedMessage
+                id='Apis.Details.Endpoints.GeneralConfiguration.UploadCertificate.endpoint.empty.error'
+                defaultMessage='Save endpoints before adding the certificate'
+            /> : iff(isEndpointEmpty, <FormattedMessage
+                id='Apis.Details.Endpoints.GeneralConfiguration.UploadCertificate.endpoint.error'
+                defaultMessage='Endpoint should not be empty'
+            />, <FormattedMessage
+                id='Apis.Details.Endpoints.GeneralConfiguration.UploadCertificate.endpoint.helpertext'
+                defaultMessage='Endpoint for the certificate'
+            />)
+            }
             required
             id='certificateEndpoint'
             label={
@@ -39,13 +61,17 @@ export default function SelectEndpoint(props) {
             value={endpoint}
             placeholder='Endpoint'
             onChange={event => onChange(event.target.value)}
+            onBlur={event => onBlur(event.target.value)}
             margin='normal'
             variant='outlined'
             fullWidth
             select
         >
-            {endpoints.map((ep) => {
-                return (<MenuItem value={ep.url}>{ep.url}</MenuItem>);
+            {endpoints !== null && endpoints.map((ep) => {
+                if (ep) {
+                    return (<MenuItem value={ep.url}>{ep.url}</MenuItem>);
+                }
+                return null;
             })}
         </TextField>
     );
@@ -54,6 +80,8 @@ export default function SelectEndpoint(props) {
 SelectEndpoint.propTypes = {
     endpoints: PropTypes.shape({}).isRequired,
     onChange: PropTypes.func.isRequired,
+    onBlur: PropTypes.func.isRequired,
     classes: PropTypes.shape({}).isRequired,
     endpoint: PropTypes.string.isRequired,
+    isEndpointEmpty: PropTypes.string.isRequired,
 };

@@ -131,6 +131,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -3431,7 +3432,7 @@ public class ApiMgtDAO {
         try {
             conn = APIMgtDBUtil.getConnection();
             conn.setAutoCommit(false);
-            addRating(apiId, rating, user, conn);
+            addOrUpdateRating(apiId, rating, user, conn);
 
             conn.commit();
         } catch (SQLException e) {
@@ -3454,7 +3455,7 @@ public class ApiMgtDAO {
      * @param userId        User Id
      * @throws APIManagementException if failed to add Rating
      */
-    public void addRating(APIIdentifier apiIdentifier, int rating, String userId, Connection conn)
+    public void addOrUpdateRating(APIIdentifier apiIdentifier, int rating, String userId, Connection conn)
             throws APIManagementException, SQLException {
         PreparedStatement ps = null;
         PreparedStatement psSelect = null;
@@ -3493,18 +3494,24 @@ public class ApiMgtDAO {
             String sqlAddQuery;
             String ratingId = UUID.randomUUID().toString();
             if (!userRatingExists) {
-                //This query to update the AM_API_RATINGS table
-                sqlAddQuery = SQLConstants.ADD_API_RATING_SQL;
-            } else {
                 //This query to insert into the AM_API_RATINGS table
+                sqlAddQuery = SQLConstants.ADD_API_RATING_SQL;
+                ps = conn.prepareStatement(sqlAddQuery);
+                ps.setString(1, ratingId);
+                ps.setInt(2, rating);
+                ps.setInt(3, apiId);
+                ps.setInt(4, subscriber.getId());
+            } else {
+                // This query to update the AM_API_RATINGS table
                 sqlAddQuery = SQLConstants.UPDATE_API_RATING_SQL;
+                ps = conn.prepareStatement(sqlAddQuery);
+                // Adding data to the AM_API_RATINGS table
+                ps.setInt(1, rating);
+                ps.setInt(2, apiId);
+                ps.setInt(3, subscriber.getId());
             }
-            // Adding data to the AM_API_RATINGS  table
-            ps = conn.prepareStatement(sqlAddQuery);
-            ps.setString(1, ratingId);
-            ps.setInt(2, rating);
-            ps.setInt(3, apiId);
-            ps.setInt(4, subscriber.getId());
+
+
             ps.executeUpdate();
 
         } catch (SQLException e) {
@@ -7426,6 +7433,76 @@ public class ApiMgtDAO {
             APIMgtDBUtil.closeAllConnections(ps, conn, resultSet);
         }
         return urlMappings;
+    }
+
+    public Set<URITemplate> getURITemplatesOfAPI(APIIdentifier identifier, String productionURL, String sandboxURL)
+            throws APIManagementException {
+        Map<String, URITemplate> uriTemplates = new HashMap<>();
+
+        try (Connection conn = APIMgtDBUtil.getConnection();
+            PreparedStatement ps = conn.prepareStatement(SQLConstants.GET_URL_TEMPLATES_OF_API_SQL)) {
+            ps.setString(1, identifier.getProviderName());
+            ps.setString(2, identifier.getName());
+            ps.setString(3, identifier.getVersion());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String urlPattern = rs.getString("URL_PATTERN");
+                    String verb = rs.getString("HTTP_METHOD");
+
+                    String key = urlPattern + verb;
+
+                    URITemplate uriTemplate = uriTemplates.get(key);
+
+                    if (uriTemplate != null) {
+                        Optional<APIProductIdentifier> productId = getProductIdIfExists(rs);
+                        if (productId.isPresent()) {
+                            uriTemplate.addUsedByProduct(productId.get());
+                        }
+                    } else {
+                        uriTemplate = new URITemplate();
+                        uriTemplate.setUriTemplate(urlPattern);
+                        uriTemplate.setHTTPVerb(verb);
+                        uriTemplate.setHttpVerbs(verb);
+                        uriTemplate.setAuthType(rs.getString("AUTH_SCHEME"));
+                        uriTemplate.setThrottlingTier(rs.getString("THROTTLING_TIER"));
+                        uriTemplate.setResourceURI(productionURL);
+                        uriTemplate.setResourceSandboxURI(sandboxURL);
+                        InputStream mediationScriptBlob = rs.getBinaryStream("MEDIATION_SCRIPT");
+                        if (mediationScriptBlob != null) {
+                            String script = APIMgtDBUtil.getStringFromInputStream(mediationScriptBlob);
+                            uriTemplate.setMediationScript(script);
+                        }
+
+                        Optional<APIProductIdentifier> productId = getProductIdIfExists(rs);
+                        if (productId.isPresent()) {
+                            uriTemplate.addUsedByProduct(productId.get());
+                        }
+
+                        uriTemplates.put(key, uriTemplate);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            handleException("Failed to get URI Templates of API" + identifier, e);
+        }
+
+        return new HashSet<>(uriTemplates.values());
+    }
+
+    private Optional<APIProductIdentifier> getProductIdIfExists(ResultSet rs) throws SQLException {
+        String productProvider = rs.getString("API_PRODUCT_PROVIDER");
+
+        if (rs.wasNull()) {
+            return Optional.empty();
+        }
+
+        String productName = rs.getString("API_PRODUCT_NAME");
+        String productVersion = rs.getString("API_PRODUCT_VERSION");
+
+        APIProductIdentifier productIdentifier = new APIProductIdentifier
+                (productProvider, productName, productVersion);
+
+        return Optional.of(productIdentifier);
     }
 
     // This should be only used only when Token Partitioning is enabled.
