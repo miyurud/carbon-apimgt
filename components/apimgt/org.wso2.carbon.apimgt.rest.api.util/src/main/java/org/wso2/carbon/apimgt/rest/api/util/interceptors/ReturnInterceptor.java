@@ -23,10 +23,13 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.cxf.interceptor.Fault;
 import org.apache.cxf.jaxrs.impl.MetadataMap;
 import org.apache.cxf.message.Message;
+import org.apache.cxf.message.MessageContentsList;
 import org.apache.cxf.phase.AbstractPhaseInterceptor;
 import org.apache.cxf.phase.Phase;
 
 import javax.ws.rs.core.MultivaluedMap;
+
+import java.util.List;
 
 import static org.wso2.carbon.apimgt.rest.api.util.utils.RestApiUtil.checkETagSkipList;
 
@@ -40,6 +43,9 @@ public class ReturnInterceptor extends AbstractPhaseInterceptor<Message> {
 
     @Override
     public void handleMessage(Message message) throws Fault {
+
+        List<Object> arguments = MessageContentsList.getContentsList(message.getExchange().getOutMessage());
+
         if (checkETagSkipList(message.getExchange().getInMessage().get(Message.PATH_INFO).toString(),
                 message.getExchange().getInMessage().get(Message.HTTP_REQUEST_METHOD).toString())) {
             if (log.isDebugEnabled()){
@@ -49,6 +55,7 @@ public class ReturnInterceptor extends AbstractPhaseInterceptor<Message> {
 
         }
         MultivaluedMap<String, Object> headers = (MetadataMap<String, Object>) message.get(Message.PROTOCOL_HEADERS);
+
         if (headers == null) {
             headers = new MetadataMap<>();
         }
