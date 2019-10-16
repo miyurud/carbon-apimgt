@@ -42,17 +42,18 @@ const styles = theme => ({
         fontWeight: 400,
         margin: 0,
         display: 'inline-flex',
-        lineHeight: '38px',
+        lineHeight: 2.5,
     },
     iconSpace: {
         marginLeft: theme.spacing(0.5),
     },
     actionSpace: {
-        margin: 'auto',
+        margin: theme.spacing(0, -1),
         float: 'right',
     },
     paper: {
-        padding: theme.spacing(1, 3),
+        padding: theme.spacing(0, 3),
+        marginBottom: theme.spacing(3),
     },
 });
 
@@ -188,14 +189,14 @@ class SchemaValidation extends React.Component {
                                     <FormattedMessage
                                         id={'Apis.Details.Configuration.components.SchemaValidation' +
                                         '.description.question'}
-                                        defaultMessage='Do you want  to enable schema validation?'
+                                        defaultMessage='Do you want to enable schema validation?'
                                     />
                                 </b>
                             </Typography>
                         </DialogContentText>
                     </DialogContent>
                     <DialogActions>
-                        <Button color='primary' onClick={() => this.setIsOpen(false)}>
+                        <Button color='primary' variant='contained' onClick={() => this.setIsOpen(false)}>
                             Yes
                         </Button>
                         <Button
@@ -206,6 +207,7 @@ class SchemaValidation extends React.Component {
                                     value: false,
                                 });
                             }}
+                            color='primary'
                         >
                             No
                         </Button>

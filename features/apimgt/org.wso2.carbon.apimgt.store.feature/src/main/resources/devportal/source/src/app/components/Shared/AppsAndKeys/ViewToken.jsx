@@ -65,7 +65,7 @@ const styles = theme => ({
         'text-align-last': 'center',
     },
     contentWrapper: {
-        width: theme.custom.contentAreaWidth - theme.custom.leftMenuWidth,
+        maxWidth: theme.custom.contentAreaWidth - theme.custom.leftMenu.width,
     },
     root: {
         marginTop: 20,
@@ -148,16 +148,16 @@ class ViewToken extends React.Component {
                 </InlineMessage>
                 <div className={classes.epWrapper}>
                     <Typography className={classes.prodLabel}>
-                    {(token.isOauth) && <FormattedMessage
+                        {(token.isOauth) && <FormattedMessage
                             id='Shared.AppsAndKeys.ViewToken.access.token'
                             defaultMessage='Access Token'
                         />
-                    }
-                    {(!token.isOauth) && <FormattedMessage
+                        }
+                        {(!token.isOauth) && <FormattedMessage
                             id='Shared.AppsAndKeys.ViewToken.apikey'
                             defaultMessage='Api Key'
                         />
-                    }
+                        }
                     </Typography>
                     <TextField
                         defaultValue={token.accessToken}

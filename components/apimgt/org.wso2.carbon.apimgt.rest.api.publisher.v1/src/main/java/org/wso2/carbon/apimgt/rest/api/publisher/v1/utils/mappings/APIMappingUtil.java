@@ -104,7 +104,8 @@ public class APIMappingUtil {
 
         context = context.startsWith("/") ? context : ("/" + context);
         String providerDomain = MultitenantUtils.getTenantDomain(provider);
-        if (!MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equalsIgnoreCase(providerDomain)) {
+        if (!MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equalsIgnoreCase(providerDomain) &&
+                !context.startsWith("/t")) {
             //Create tenant aware context for API
             context = "/t/" + providerDomain + context;
         }
@@ -1550,7 +1551,7 @@ public class APIMappingUtil {
             }});
         }
         operationsDTO.setThrottlingPolicy(uriTemplate.getThrottlingTier());
-        Set<APIProductIdentifier> usedByProducts = uriTemplate.getUsedByProducts();
+        Set<APIProductIdentifier> usedByProducts = uriTemplate.retrieveUsedByProducts();
         List<String> usedProductIds = new ArrayList<>();
 
         for (APIProductIdentifier usedByProduct : usedByProducts) {
@@ -1599,7 +1600,7 @@ public class APIMappingUtil {
         for (APIProduct apiProduct : productList) {
             APIProductInfoDTO productDto = new APIProductInfoDTO();
             productDto.setName(apiProduct.getId().getName());
-            productDto.setProvider(apiProduct.getId().getProviderName());
+            productDto.setProvider(APIUtil.replaceEmailDomainBack(apiProduct.getId().getProviderName()));
             productDto.setContext(apiProduct.getContext());
             productDto.setDescription(apiProduct.getDescription());
             productDto.setState(org.wso2.carbon.apimgt.rest.api.publisher.v1.dto.APIProductInfoDTO.StateEnum
@@ -1619,11 +1620,12 @@ public class APIMappingUtil {
         APIProductDTO productDto = new APIProductDTO();
         APIProvider apiProvider = RestApiUtil.getLoggedInUserProvider();
         productDto.setName(product.getId().getName());
-        productDto.setProvider(product.getId().getProviderName());
+        productDto.setProvider(APIUtil.replaceEmailDomainBack(product.getId().getProviderName()));
         productDto.setId(product.getUuid());
         productDto.setContext(product.getContext());
         productDto.setDescription(product.getDescription());
         productDto.setApiType(APIConstants.AuditLogConstants.API_PRODUCT);
+        productDto.setAuthorizationHeader(product.getAuthorizationHeader());
 
         Set<String> apiTags = product.getTags();
         List<String> tagsToReturn = new ArrayList<>(apiTags);
@@ -1808,7 +1810,8 @@ public class APIMappingUtil {
 
         context = context.startsWith("/") ? context : ("/" + context);
         String providerDomain = MultitenantUtils.getTenantDomain(provider);
-        if (!MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equalsIgnoreCase(providerDomain)) {
+        if (!MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equalsIgnoreCase(providerDomain) &&
+                !context.startsWith("/t")) {
             //Create tenant aware context for API
             context = "/t/" + providerDomain + context;
         }

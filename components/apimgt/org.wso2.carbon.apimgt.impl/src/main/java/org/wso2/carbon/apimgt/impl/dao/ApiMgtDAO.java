@@ -613,7 +613,7 @@ public class ApiMgtDAO {
                 monetizationUsagePublishInfo.setState(rs.getString("STATE"));
                 monetizationUsagePublishInfo.setStatus(rs.getString("STATUS"));
                 monetizationUsagePublishInfo.setStartedTime(rs.getLong("STARTED_TIME"));
-                monetizationUsagePublishInfo.setLastPublishTime(rs.getLong("LAST_PUBLISHED_TIME"));
+                monetizationUsagePublishInfo.setLastPublishTime(rs.getLong("PUBLISHED_TIME"));
                 return monetizationUsagePublishInfo;
             }
         } catch (SQLException e) {
@@ -3427,12 +3427,12 @@ public class ApiMgtDAO {
         return applicationId;
     }
 
-    public void addRating(APIIdentifier apiId, int rating, String user) throws APIManagementException {
+    public void addRating(Identifier id, int rating, String user) throws APIManagementException {
         Connection conn = null;
         try {
             conn = APIMgtDBUtil.getConnection();
             conn.setAutoCommit(false);
-            addOrUpdateRating(apiId, rating, user, conn);
+            addOrUpdateRating(id, rating, user, conn);
 
             conn.commit();
         } catch (SQLException e) {
@@ -3450,12 +3450,12 @@ public class ApiMgtDAO {
     }
 
     /**
-     * @param apiIdentifier API Identifier
+     * @param identifier    Identifier
      * @param rating        Rating
      * @param userId        User Id
      * @throws APIManagementException if failed to add Rating
      */
-    public void addOrUpdateRating(APIIdentifier apiIdentifier, int rating, String userId, Connection conn)
+    public void addOrUpdateRating(Identifier identifier, int rating, String userId, Connection conn)
             throws APIManagementException, SQLException {
         PreparedStatement ps = null;
         PreparedStatement psSelect = null;
@@ -3471,19 +3471,22 @@ public class ApiMgtDAO {
                 log.error(msg);
                 throw new APIManagementException(msg);
             }
-            int apiId;
-            apiId = getAPIID(apiIdentifier, conn);
-            if (apiId == -1) {
-                String msg = "Could not load API record for: " + apiIdentifier.getApiName();
+            int id;
+            id = getAPIID(identifier, conn);
+            if (id == -1) {
+                String msg = "Could not load API record for: " + identifier.getName();
                 log.error(msg);
                 throw new APIManagementException(msg);
             }
             boolean userRatingExists = false;
             //This query to check the ratings already exists for the user in the AM_API_RATINGS table
             String sqlQuery = SQLConstants.GET_API_RATING_SQL;
+            if(identifier instanceof APIProductIdentifier){
+                sqlQuery = SQLConstants.GET_API_PRODUCT_RATING_SQL;
+            }
 
             psSelect = conn.prepareStatement(sqlQuery);
-            psSelect.setInt(1, apiId);
+            psSelect.setInt(1, id);
             psSelect.setInt(2, subscriber.getId());
             rs = psSelect.executeQuery();
 
@@ -3496,18 +3499,24 @@ public class ApiMgtDAO {
             if (!userRatingExists) {
                 //This query to insert into the AM_API_RATINGS table
                 sqlAddQuery = SQLConstants.ADD_API_RATING_SQL;
+                if (identifier instanceof APIProductIdentifier) {
+                    sqlAddQuery = SQLConstants.ADD_API_PRODUCT_RATING_SQL;
+                }
                 ps = conn.prepareStatement(sqlAddQuery);
                 ps.setString(1, ratingId);
                 ps.setInt(2, rating);
-                ps.setInt(3, apiId);
+                ps.setInt(3, id);
                 ps.setInt(4, subscriber.getId());
             } else {
                 // This query to update the AM_API_RATINGS table
                 sqlAddQuery = SQLConstants.UPDATE_API_RATING_SQL;
+                if (identifier instanceof APIProductIdentifier) {
+                    sqlAddQuery = SQLConstants.UPDATE_API_PRODUCT_RATING_SQL;
+                }
                 ps = conn.prepareStatement(sqlAddQuery);
                 // Adding data to the AM_API_RATINGS table
                 ps.setInt(1, rating);
-                ps.setInt(2, apiId);
+                ps.setInt(2, id);
                 ps.setInt(3, subscriber.getId());
             }
 
@@ -3522,13 +3531,13 @@ public class ApiMgtDAO {
         }
     }
 
-    public void removeAPIRating(APIIdentifier apiId, String user) throws APIManagementException {
+    public void removeAPIRating(Identifier id, String user) throws APIManagementException {
         Connection conn = null;
         try {
             conn = APIMgtDBUtil.getConnection();
             conn.setAutoCommit(false);
 
-            removeAPIRating(apiId, user, conn);
+            removeAPIRating(id, user, conn);
 
             conn.commit();
         } catch (SQLException e) {
@@ -3546,11 +3555,11 @@ public class ApiMgtDAO {
     }
 
     /**
-     * @param apiIdentifier API Identifier
+     * @param identifier    Identifier
      * @param userId        User Id
      * @throws APIManagementException if failed to remove API user Rating
      */
-    public void removeAPIRating(APIIdentifier apiIdentifier, String userId, Connection conn)
+    public void removeAPIRating(Identifier identifier, String userId, Connection conn)
             throws APIManagementException, SQLException {
         PreparedStatement ps = null;
         PreparedStatement psSelect = null;
@@ -3568,19 +3577,22 @@ public class ApiMgtDAO {
                 throw new APIManagementException(msg);
             }
             //Get API Id
-            int apiId = -1;
-            apiId = getAPIID(apiIdentifier, conn);
-            if (apiId == -1) {
-                String msg = "Could not load API record for: " + apiIdentifier.getApiName();
+            int id = -1;
+            id = getAPIID(identifier, conn);
+            if (id == -1) {
+                String msg = "Could not load API record for: " + identifier.getName();
                 log.error(msg);
                 throw new APIManagementException(msg);
             }
 
             //This query to check the ratings already exists for the user in the AM_API_RATINGS table
-            String sqlQuery = SQLConstants.GET_RATING_ID_SQL;
+            String sqlQuery = SQLConstants.GET_API_RATING_ID_SQL;
+            if(identifier instanceof APIProductIdentifier) {
+                sqlQuery = SQLConstants.GET_API_PRODUCT_RATING_ID_SQL;
+            }
 
             psSelect = conn.prepareStatement(sqlQuery);
-            psSelect.setInt(1, apiId);
+            psSelect.setInt(1, id);
             psSelect.setInt(2, subscriber.getId());
             rs = psSelect.executeQuery();
 
@@ -3604,14 +3616,14 @@ public class ApiMgtDAO {
         }
     }
 
-    public int getUserRating(Identifier apiId, String user) throws APIManagementException {
+    public int getUserRating(Identifier id, String user) throws APIManagementException {
         Connection conn = null;
         int userRating = 0;
         try {
             conn = APIMgtDBUtil.getConnection();
             conn.setAutoCommit(false);
 
-            userRating = getUserRating(apiId, user, conn);
+            userRating = getUserRating(id, user, conn);
 
             conn.commit();
         } catch (SQLException e) {
@@ -3630,11 +3642,11 @@ public class ApiMgtDAO {
     }
 
     /**
-     * @param apiIdentifier API Identifier
+     * @param identifier    Identifier
      * @param userId        User Id
      * @throws APIManagementException if failed to get User API Rating
      */
-    public int getUserRating(Identifier apiIdentifier, String userId, Connection conn)
+    public int getUserRating(Identifier identifier, String userId, Connection conn)
             throws APIManagementException, SQLException {
         PreparedStatement ps = null;
         ResultSet rs = null;
@@ -3650,19 +3662,22 @@ public class ApiMgtDAO {
                 throw new APIManagementException(msg);
             }
             //Get API Id
-            int apiId = -1;
-            apiId = getAPIID(apiIdentifier, conn);
-            if (apiId == -1) {
-                String msg = "Could not load API record for: " + apiIdentifier.getName();
+            int id = -1;
+            id = getAPIID(identifier, conn);
+            if (id == -1) {
+                String msg = "Could not load API record for: " + identifier.getName();
                 log.error(msg);
                 throw new APIManagementException(msg);
             }
             //This query to update the AM_API_RATINGS table
-            String sqlQuery = SQLConstants.GET_RATING_SQL;
+            String sqlQuery = SQLConstants.GET_API_RATING_SQL;
+            if (identifier instanceof APIProductIdentifier) {
+                sqlQuery = SQLConstants.GET_API_PRODUCT_RATING_SQL;
+            }
             // Adding data to the AM_API_RATINGS  table
             ps = conn.prepareStatement(sqlQuery);
-            ps.setInt(1, subscriber.getId());
-            ps.setInt(2, apiId);
+            ps.setInt(1, id);
+            ps.setInt(2, subscriber.getId());
             rs = ps.executeQuery();
 
             while (rs.next()) {
@@ -3678,18 +3693,18 @@ public class ApiMgtDAO {
     }
 
     /**
-     * @param apiId API Identifier
+     * @param identifier          Identifier
      * @param user        User name
      * @throws APIManagementException if failed to get user API Ratings
      */
-    public JSONObject getUserRatingInfo(APIIdentifier apiId, String user) throws APIManagementException {
+    public JSONObject getUserRatingInfo(Identifier identifier, String user) throws APIManagementException {
         Connection conn = null;
         JSONObject userRating = null;
         try {
             conn = APIMgtDBUtil.getConnection();
             conn.setAutoCommit(false);
 
-            userRating = getUserRatingInfo(apiId, user, conn);
+            userRating = getUserRatingInfo(identifier, user, conn);
 
             conn.commit();
         } catch (SQLException e) {
@@ -3708,18 +3723,18 @@ public class ApiMgtDAO {
     }
 
     /**
-     * @param apiIdentifier API Identifier
+     * @param identifier    Identifier
      * @param userId        User Id
      * @param conn          Database connection
      * @throws APIManagementException if failed to get user API Ratings
      */
-    private JSONObject getUserRatingInfo(APIIdentifier apiIdentifier, String userId, Connection conn)
+    private JSONObject getUserRatingInfo(Identifier identifier, String userId, Connection conn)
             throws APIManagementException, SQLException {
         PreparedStatement ps = null;
         ResultSet rs = null;
         JSONObject ratingObj = new JSONObject();
         int userRating = 0;
-        int apiId = -1;
+        int id = -1;
         String ratingId = null;
         try {
             int tenantId;
@@ -3732,27 +3747,29 @@ public class ApiMgtDAO {
                 throw new APIManagementException(msg);
             }
             //Get API Id
-            apiId = getAPIID(apiIdentifier, conn);
-            if (apiId == -1) {
-                String msg = "Could not load API record for: " + apiIdentifier.getApiName();
+            id = getAPIID(identifier, conn);
+
+            String sqlQuery = SQLConstants.GET_API_RATING_INFO_SQL;
+            if (identifier instanceof APIProductIdentifier) {
+                sqlQuery = SQLConstants.GET_API_PRODUCT_RATING_INFO_SQL;
+            }
+            if (id == -1) {
+                String msg = "Could not load API record for: " + identifier.getName();
                 log.error(msg);
                 throw new APIManagementException(msg);
             }
             //This query to get rating information from the AM_API_RATINGS table
-            String sqlQuery = SQLConstants.GET_RATING_INFO_SQL;
             ps = conn.prepareStatement(sqlQuery);
             ps.setInt(1, subscriber.getId());
-            ps.setInt(2, apiId);
+            ps.setInt(2, id);
             rs = ps.executeQuery();
 
             while (rs.next()) {
-                apiId = rs.getInt("API_ID");
                 ratingId = rs.getString("RATING_ID");
                 userRating = rs.getInt("RATING");
             }
             if (ratingId != null) {
                 // A rating record exists
-                ratingObj.put(APIConstants.API_ID, apiId);
                 ratingObj.put(APIConstants.RATING_ID, ratingId);
                 ratingObj.put(APIConstants.USER_NAME, userId);
                 ratingObj.put(APIConstants.RATING, userRating);
@@ -3795,11 +3812,11 @@ public class ApiMgtDAO {
     }
 
     /**
-     * @param apiIdentifier API Identifier
+     * @param identifier    Identifier
      * @param conn          Database connection
      * @throws APIManagementException if failed to get API Ratings
      */
-    private JSONArray getAPIRatings(Identifier apiIdentifier, Connection conn)
+    private JSONArray getAPIRatings(Identifier identifier, Connection conn)
             throws APIManagementException, SQLException {
         PreparedStatement ps = null;
         PreparedStatement psSubscriber = null;
@@ -3808,30 +3825,31 @@ public class ApiMgtDAO {
         JSONArray ratingArray = new JSONArray();
         int userRating = 0;
         String ratingId = null;
-        int apiId = -1;
+        int id = -1;
         int subscriberId = -1;
         try {
             //Get API Id
-            apiId = getAPIID(apiIdentifier, conn);
-            if (apiId == -1) {
-                String msg = "Could not load API record for: " + apiIdentifier.getName();
+            id = getAPIID(identifier, conn);
+            if (id == -1) {
+                String msg = "Could not load API record for: " + identifier.getName();
                 log.error(msg);
                 throw new APIManagementException(msg);
             }
             //This query to get rating information from the AM_API_RATINGS table
             String sqlQuery = SQLConstants.GET_API_ALL_RATINGS_SQL;
+            if (identifier instanceof APIProductIdentifier) {
+                sqlQuery = SQLConstants.GET_API_PRODUCT_ALL_RATINGS_SQL;
+            }
             ps = conn.prepareStatement(sqlQuery);
-            ps.setInt(1, apiId);
+            ps.setInt(1, id);
             rs = ps.executeQuery();
 
             while (rs.next()) {
                 JSONObject ratingObj = new JSONObject();
                 String subscriberName = null;
-                apiId = rs.getInt("API_ID");
                 ratingId = rs.getString("RATING_ID");
                 subscriberId = rs.getInt("SUBSCRIBER_ID");
                 userRating = rs.getInt("RATING");
-                ratingObj.put(APIConstants.API_ID, apiId);
                 ratingObj.put(APIConstants.RATING_ID, ratingId);
                 // SQL Query to get subscriber name
                 String sqlSubscriberQuery = SQLConstants.GET_SUBSCRIBER_NAME_FROM_ID_SQL;
@@ -3895,7 +3913,7 @@ public class ApiMgtDAO {
                 return Float.NEGATIVE_INFINITY;
             }
             //This query to update the AM_API_RATINGS table
-            String sqlQuery = SQLConstants.GET_AVERAGE_RATING_SQL;
+            String sqlQuery = SQLConstants.GET_API_AVERAGE_RATING_SQL;
 
             ps = conn.prepareStatement(sqlQuery);
             ps.setInt(1, apiId);
@@ -3920,10 +3938,10 @@ public class ApiMgtDAO {
     }
 
     /**
-     * @param apiIdentifier API Identifier
+     * @param identifier Identifier
      * @throws APIManagementException if failed to add Application
      */
-    public float getAverageRating(Identifier apiIdentifier, Connection conn)
+    public float getAverageRating(Identifier identifier, Connection conn)
             throws APIManagementException, SQLException {
         PreparedStatement ps = null;
         ResultSet rs = null;
@@ -3931,14 +3949,17 @@ public class ApiMgtDAO {
         try {
             //Get API Id
             int apiId;
-            apiId = getAPIID(apiIdentifier, conn);
+            apiId = getAPIID(identifier, conn);
             if (apiId == -1) {
-                String msg = "Could not load API record for: " + apiIdentifier.getName();
+                String msg = "Could not load API record for: " + identifier.getName();
                 log.error(msg);
                 return Float.NEGATIVE_INFINITY;
             }
             //This query to update the AM_API_RATINGS table
-            String sqlQuery = SQLConstants.GET_AVERAGE_RATING_SQL;
+            String sqlQuery = SQLConstants.GET_API_AVERAGE_RATING_SQL;
+            if (identifier instanceof APIProductIdentifier){
+                sqlQuery = SQLConstants.GET_API_PRODUCT_AVERAGE_RATING_SQL;
+            }
 
             ps = conn.prepareStatement(sqlQuery);
             ps.setInt(1, apiId);
@@ -7441,7 +7462,7 @@ public class ApiMgtDAO {
 
         try (Connection conn = APIMgtDBUtil.getConnection();
             PreparedStatement ps = conn.prepareStatement(SQLConstants.GET_URL_TEMPLATES_OF_API_SQL)) {
-            ps.setString(1, identifier.getProviderName());
+            ps.setString(1, APIUtil.replaceEmailDomainBack(identifier.getProviderName()));
             ps.setString(2, identifier.getName());
             ps.setString(3, identifier.getVersion());
             try (ResultSet rs = ps.executeQuery()) {
@@ -7463,14 +7484,19 @@ public class ApiMgtDAO {
                         uriTemplate.setUriTemplate(urlPattern);
                         uriTemplate.setHTTPVerb(verb);
                         uriTemplate.setHttpVerbs(verb);
-                        uriTemplate.setAuthType(rs.getString("AUTH_SCHEME"));
-                        uriTemplate.setThrottlingTier(rs.getString("THROTTLING_TIER"));
+                        String authType = rs.getString("AUTH_SCHEME");
+                        String throttlingTier = rs.getString("THROTTLING_TIER");
+                        uriTemplate.setAuthType(authType);
+                        uriTemplate.setAuthTypes(authType);
+                        uriTemplate.setThrottlingTier(throttlingTier);
+                        uriTemplate.setThrottlingTiers(throttlingTier);
                         uriTemplate.setResourceURI(productionURL);
                         uriTemplate.setResourceSandboxURI(sandboxURL);
                         InputStream mediationScriptBlob = rs.getBinaryStream("MEDIATION_SCRIPT");
                         if (mediationScriptBlob != null) {
                             String script = APIMgtDBUtil.getStringFromInputStream(mediationScriptBlob);
                             uriTemplate.setMediationScript(script);
+                            uriTemplate.setMediationScripts(verb, script);
                         }
 
                         Optional<APIProductIdentifier> productId = getProductIdIfExists(rs);
@@ -7652,42 +7678,36 @@ public class ApiMgtDAO {
     /**
      * Adds a comment for an API
      *
-     * @param identifier API Identifier
+     * @param identifier API identifier
      * @param comment    Commented Text
      * @param user       User who did the comment
      * @return Comment ID
      */
-    public String addComment(APIIdentifier identifier, Comment comment, String user) throws APIManagementException {
+    public String addComment(Identifier identifier, Comment comment, String user) throws APIManagementException {
         Connection connection = null;
-        ResultSet resultSet = null;
         ResultSet insertSet = null;
-        PreparedStatement getPrepStmt = null;
         PreparedStatement insertPrepStmt = null;
         String commentId = null;
-        int apiId = -1;
+        int id = -1;
 
         try {
             connection = APIMgtDBUtil.getConnection();
             connection.setAutoCommit(false);
-
-            String getApiQuery = SQLConstants.GET_API_ID_SQL;
-            getPrepStmt = connection.prepareStatement(getApiQuery);
-            getPrepStmt.setString(1, APIUtil.replaceEmailDomainBack(identifier.getProviderName()));
-            getPrepStmt.setString(2, identifier.getApiName());
-            getPrepStmt.setString(3, identifier.getVersion());
-            resultSet = getPrepStmt.executeQuery();
-            if (resultSet.next()) {
-                apiId = resultSet.getInt("API_ID");
-            }
-
-            if (apiId == -1) {
-                String msg = "Unable to get the API ID for: " + identifier;
+            //Get API Id
+            id = getAPIID(identifier, connection);
+            if (id == -1) {
+                String msg = "Could not load API record for: " + identifier.getName();
                 log.error(msg);
                 throw new APIManagementException(msg);
             }
 
             /*This query is to update the AM_API_COMMENTS table */
-            String addCommentQuery = SQLConstants.ADD_COMMENT_SQL;
+            String addCommentQuery;
+            if (identifier instanceof APIIdentifier) {
+                addCommentQuery = SQLConstants.ADD_COMMENT_SQL;
+            } else {
+                addCommentQuery = SQLConstants.ADD_API_PRODUCT_COMMENT_SQL;
+            }
             commentId = UUID.randomUUID().toString();
 
             /*Adding data to the AM_API_COMMENTS table*/
@@ -7698,7 +7718,7 @@ public class ApiMgtDAO {
             insertPrepStmt.setString(2, comment.getText());
             insertPrepStmt.setString(3, user);
             insertPrepStmt.setTimestamp(4, new Timestamp(System.currentTimeMillis()), Calendar.getInstance());
-            insertPrepStmt.setInt(5, apiId);
+            insertPrepStmt.setInt(5, id);
 
             insertPrepStmt.executeUpdate();
             connection.commit();
@@ -7710,10 +7730,9 @@ public class ApiMgtDAO {
                     log.error("Failed to rollback the add comment ", e1);
                 }
             }
-            handleException("Failed to add comment data, for  " + identifier.getApiName() + '-' + identifier
-                    .getVersion(), e);
+            handleException("Failed to add comment data, for  " + identifier.getName() + "-" + identifier.getVersion(),
+                    e);
         } finally {
-            APIMgtDBUtil.closeAllConnections(getPrepStmt, connection, resultSet);
             APIMgtDBUtil.closeAllConnections(insertPrepStmt, null, insertSet);
         }
         return commentId;
@@ -7772,20 +7791,31 @@ public class ApiMgtDAO {
      * @return Comment Array
      * @throws APIManagementException
      */
-    public Comment getComment(APIIdentifier identifier, String commentId) throws APIManagementException {
+    public Comment getComment(Identifier identifier, String commentId) throws APIManagementException {
 
         Comment comment = new Comment();
         Connection connection = null;
         ResultSet resultSet = null;
         PreparedStatement prepStmt = null;
+        int id = -1;
 
-        String getCommentQuery = SQLConstants.GET_COMMENT_SQL;
-
+        String getCommentQuery;
+        if (identifier instanceof APIIdentifier) {
+            getCommentQuery = SQLConstants.GET_COMMENT_SQL;
+        } else {
+            getCommentQuery = SQLConstants.GET_API_PRODUCT_COMMENT_SQL;
+        }
         try {
             connection = APIMgtDBUtil.getConnection();
+            id = getAPIID(identifier, connection);
+            if (id == -1) {
+                String msg = "Could not load API record for: " + identifier.getName();
+                log.error(msg);
+                throw new APIManagementException(msg);
+            }
             prepStmt = connection.prepareStatement(getCommentQuery);
             prepStmt.setString(1, APIUtil.replaceEmailDomainBack(identifier.getProviderName()));
-            prepStmt.setString(2, identifier.getApiName());
+            prepStmt.setString(2, identifier.getName());
             prepStmt.setString(3, identifier.getVersion());
             prepStmt.setString(4, commentId);
             resultSet = prepStmt.executeQuery();
@@ -7805,11 +7835,75 @@ public class ApiMgtDAO {
             } catch (SQLException e1) {
                 log.error("Failed to retrieve comment ", e1);
             }
-            handleException("Failed to retrieve comment for API " + identifier.getApiName() + "with comment ID " + commentId, e);
+            handleException("Failed to retrieve comment for API " + identifier.getName() + "with comment ID " +
+                    commentId, e);
         } finally {
             APIMgtDBUtil.closeAllConnections(prepStmt, connection, resultSet);
         }
         return null;
+    }
+
+    /**
+     * Returns all the Comments on an API
+     *
+     * @param apiTypeWrapper API type wrapper
+     * @return Comment Array
+     * @throws APIManagementException
+     */
+    public Comment[] getComments(ApiTypeWrapper apiTypeWrapper) throws APIManagementException {
+        List<Comment> commentList = new ArrayList<Comment>();
+        Connection connection = null;
+        ResultSet resultSet = null;
+        PreparedStatement prepStmt = null;
+        boolean isProduct = apiTypeWrapper.isAPIProduct();
+        int id = -1;
+        String sqlQuery;
+        if(!isProduct) {
+            sqlQuery  = SQLConstants.GET_COMMENTS_SQL;
+        } else {
+            sqlQuery = SQLConstants.GET_API_PRODUCT_COMMENTS_SQL;
+        }
+        Identifier identifier;
+
+        try {
+            connection = APIMgtDBUtil.getConnection();
+            if (!isProduct) {
+                identifier = apiTypeWrapper.getApi().getId();
+            } else  {
+                identifier = apiTypeWrapper.getApiProduct().getId();
+            }
+            id = getAPIID(identifier, connection);
+            if (id == -1) {
+                String msg = "Could not load API record for: " + identifier.getName();
+                log.error(msg);
+                throw new APIManagementException(msg);
+            }
+            prepStmt = connection.prepareStatement(sqlQuery);
+            prepStmt.setString(1, APIUtil.replaceEmailDomainBack(identifier.getProviderName()));
+            prepStmt.setString(2, identifier.getName());
+            prepStmt.setString(3, identifier.getVersion());
+            resultSet = prepStmt.executeQuery();
+            while (resultSet.next()) {
+                Comment comment = new Comment();
+                comment.setId(resultSet.getString("COMMENT_ID"));
+                comment.setText(resultSet.getString("COMMENT_TEXT"));
+                comment.setUser(resultSet.getString("COMMENTED_USER"));
+                comment.setCreatedTime(resultSet.getTimestamp("DATE_COMMENTED"));
+                commentList.add(comment);
+            }
+        } catch (SQLException e) {
+            try {
+                if (connection != null) {
+                    connection.rollback();
+                }
+            } catch (SQLException e1) {
+                log.error("Failed to retrieve comments ", e1);
+            }
+            handleException("Failed to retrieve comments for  " + apiTypeWrapper.getName(), e);
+        } finally {
+            APIMgtDBUtil.closeAllConnections(prepStmt, connection, resultSet);
+        }
+        return commentList.toArray(new Comment[commentList.size()]);
     }
 
     /**
@@ -13982,22 +14076,31 @@ public class ApiMgtDAO {
      */
     public void deleteAPIProduct(APIProductIdentifier productIdentifier) throws APIManagementException {
         String deleteQuery = SQLConstants.DELETE_API_PRODUCT_SQL;
+        String deleteRatingsQuery = SQLConstants.REMOVE_FROM_API_PRODUCT_RATING_SQL;
         PreparedStatement ps = null;
         Connection connection = null;
         try {
             connection = APIMgtDBUtil.getConnection();
             connection.setAutoCommit(false);
+            //  delete product ratings
+            int id = getAPIProductId(productIdentifier);
+            ps = connection.prepareStatement(deleteRatingsQuery);
+            ps.setInt(1, id);
+            ps.execute();
+            ps.close();//If exception occurs at execute, this statement will close in finally else here
+            //delete product
             ps = connection.prepareStatement(deleteQuery);
             ps.setString(1, APIUtil.replaceEmailDomainBack(productIdentifier.getProviderName()));
             ps.setString(2, productIdentifier.getName());
             ps.setString(3, productIdentifier.getVersion());
             ps.executeUpdate();
+            ps.close();
 
             connection.commit();
         } catch (SQLException e) {
             handleException("Error while deleting api product " + productIdentifier , e);
         } finally {
-            APIMgtDBUtil.closeAllConnections(ps, null, null);
+            APIMgtDBUtil.closeAllConnections(ps, connection, null);
         }
     }
 
@@ -14105,125 +14208,6 @@ public class ApiMgtDAO {
             handleException("Error in updating API Product: " + e.getMessage(), e);
         } finally {
             APIMgtDBUtil.closeAllConnections(ps, conn, null);
-        }
-    }
-
-    /**
-     * Check whether a product with the given name and provider exists in the tenant domain
-     * @param productName
-     * @param provider
-     * @param tenantDomain
-     * @return boolean
-     * @throws APIManagementException
-     */
-    public boolean isProductExist(String productName, String provider, String tenantDomain)
-            throws APIManagementException {
-        Connection connection = null;
-        PreparedStatement prepStmtGetAPIProduct = null;
-        boolean isExist = false;
-        
-        ResultSet rs = null;
-
-        try {
-            connection = APIMgtDBUtil.getConnection();   
-            String queryGetAPIProduct = SQLConstants.IS_API_PRODUCT_EXIST;
-            prepStmtGetAPIProduct = connection.prepareStatement(queryGetAPIProduct);
-            prepStmtGetAPIProduct.setString(1, provider);
-            prepStmtGetAPIProduct.setString(2, productName);
-            prepStmtGetAPIProduct.setString(3, tenantDomain);
-            rs = prepStmtGetAPIProduct.executeQuery();
-
-            if (rs.next()) {
-                isExist = true;
-            }
-
-        } catch (SQLException e) {
-            handleException("Error while retrieving api product for tenant " + tenantDomain , e);
-        } finally {
-            APIMgtDBUtil.closeAllConnections(prepStmtGetAPIProduct, connection, rs);
-        }
-        return isExist;
-    }
-    
-    /**
-     * Get product definition for uuid. 
-     * @param uuid
-     * @return APIProduct product object with visibility information
-     * @throws APIManagementException
-     */
-    public APIProduct getProductDefinition(String uuid) throws APIManagementException {
-        Connection connection = null;
-        PreparedStatement prepStmtGetAPIProduct = null;
-        String content = "";
-        APIProduct product = null;
-        ResultSet rs = null;
-
-        try {
-            connection = APIMgtDBUtil.getConnection();
-            String queryGetAPIProduct = SQLConstants.GET_PRODUCT_RESOURCE_BY_COLUMN.replace("{column}", "DEFINITION");
-            prepStmtGetAPIProduct = connection.prepareStatement(queryGetAPIProduct);
-            prepStmtGetAPIProduct.setString(1, uuid);
-            rs = prepStmtGetAPIProduct.executeQuery();
-
-            if (rs.next()) {
-                InputStream inputStream = rs.getBinaryStream("DEFINITION");
-                if (inputStream != null) {
-                    content = APIMgtDBUtil.getStringFromInputStream(inputStream);
-                    product = new APIProduct();
-                    product.setUuid(uuid);
-                    product.setDefinition(content);
-                    //setting visibility 
-                    product.setVisibility(rs.getString("VISIBILITY"));
-                    product.setVisibleRoles(rs.getString("VISIBILE_ROLES"));                  
-                }
-            }
-
-        } catch (SQLException e) {
-            handleException("Error while retrieving definition for product id " + uuid, e);
-        } finally {
-            APIMgtDBUtil.closeAllConnections(prepStmtGetAPIProduct, connection, rs);
-        }
-        if (log.isDebugEnabled()) {
-            log.debug("getResourceAsStringFromProductTable() : content for uuid " + uuid
-                    + " : " + content);
-        }
-        return product;
-    }
-    
-    /**
-     * Remove data to the given column as a blob in the api product table
-     * @param uuid
-     * @param columnName
-     * @throws APIManagementException
-     */
-    public void removeStringDataFromProductTable(String uuid, String columnName) throws APIManagementException {
-        updateStringDataToProductTable(uuid, columnName, "");
-    }
-    
-    /**
-     * Update string data in the given column as a blob in the api product table
-     * @param uuid uuid
-     * @param columnName column name
-     * @param data string data
-     * @throws APIManagementException
-     */
-    public void updateStringDataToProductTable(String uuid, String columnName, String data) throws APIManagementException {
-        Connection conn = null;
-        PreparedStatement addStatement = null;
-        try {
-            conn = APIMgtDBUtil.getConnection();
-            conn.setAutoCommit(false);
-            String addQuery = SQLConstants.UPDATE_BLOB_API_PRODUCT_BY_COLUMN.replace("{column}", columnName);
-            addStatement = conn.prepareStatement(addQuery);
-            addStatement.setBlob(1, new ByteArrayInputStream(data.getBytes()));
-            addStatement.setString(2, uuid);
-            addStatement.executeUpdate();
-
-            conn.commit();
-        } catch (SQLException e) {
-            handleException("Failed to update data in column : " + columnName + " for product " + uuid, e);
-        } finally {
-            APIMgtDBUtil.closeAllConnections(addStatement, conn, null);
         }
     }
 
@@ -14359,6 +14343,49 @@ public class ApiMgtDAO {
             handleException("Failed to delete alert email data.", e);
         } finally {
             APIMgtDBUtil.closeAllConnections(ps, connection, rs);
+        }
+    }
+
+    /**
+     * Persist revoked jwt signatures to database.
+     *
+     * @param jwtSignature signature of jwt token.
+     * @param tenantDomain tenant domain of the jwt subject.
+     * @param expiryTime   expiry time of the token.
+     */
+    public void addRevokedJWTSignature(String jwtSignature, Long expiryTime, String tenantDomain) throws APIManagementException {
+
+        String addJwtSignature = SQLConstants.RevokedJWTConstants.ADD_JWT_SIGNATURE;
+        try (Connection conn = APIMgtDBUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement
+                     (addJwtSignature)) {
+            conn.setAutoCommit(false);
+            ps.setString(1, UUID.randomUUID().toString());
+            ps.setString(2, jwtSignature);
+            ps.setLong(3, expiryTime);
+            ps.setString(4, tenantDomain);
+            ps.execute();
+            conn.commit();
+        } catch (SQLException e) {
+            handleException("Error in adding revoked jwt signature to database : " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Removes expired JWTs from revoke table.
+     * @throws APIManagementException
+     */
+    public void removeExpiredJWTs() throws APIManagementException {
+
+        String deleteQuery = SQLConstants.RevokedJWTConstants.DELETE_REVOKED_JWT;
+        try (Connection connection = APIMgtDBUtil.getConnection(); PreparedStatement ps =
+                connection.prepareStatement(deleteQuery)) {
+            connection.setAutoCommit(false);
+            ps.setLong(1, System.currentTimeMillis() / 1000);
+            ps.executeUpdate();
+            connection.commit();
+        } catch (SQLException e) {
+            handleException("Error while deleting expired JWTs from revoke table.", e);
         }
     }
 }

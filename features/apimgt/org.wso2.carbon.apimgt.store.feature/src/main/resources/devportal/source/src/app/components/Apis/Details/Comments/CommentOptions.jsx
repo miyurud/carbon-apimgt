@@ -17,7 +17,8 @@
  */
 import React from 'react';
 import PropTypes from 'prop-types';
-import Grid from '@material-ui/core/Grid/Grid';
+import Grid from '@material-ui/core/Grid';
+import Button from '@material-ui/core/Button';
 import { Typography } from '@material-ui/core';
 import { withStyles } from '@material-ui/core/styles';
 import { FormattedMessage } from 'react-intl';
@@ -34,10 +35,12 @@ const styles = theme => ({
         marginTop: theme.spacing.unit * 0.3,
     },
     verticalSpace: {
-        marginTop: theme.spacing.unit * 0.2,
+        marginTop: theme.spacing(1),
+        display: 'flex',
+        alignItems: 'center',
     },
     disable: {
-        color: theme.custom.disableColor,
+        color: theme.palette.grey[200],
     },
     commentIcon: {
         color: theme.palette.getContrastText(theme.palette.background.default),
@@ -143,13 +146,13 @@ class CommentOptions extends React.Component {
             classes, comment, editIndex, index, theme,
         } = this.props;
         return (
-            <Grid container spacing={1} className={classes.verticalSpace} key={comment.commentId}>
+            <Grid container spacing={1} className={classes.verticalSpace} key={comment.id}>
                 {/* only the comment owner or admin can delete a comment */}
-                {(comment.createdBy === AuthManager.getUser().name
+                {AuthManager.getUser() && (comment.createdBy === AuthManager.getUser().name
                     || AuthManager.getUser().name === theme.custom.adminRole) && [
                         <Grid item key='key-delete'>
-                            <Typography
-                                component='a'
+                            <Button
+                                variant="outlined" size="small"
                                 className={editIndex === -1 ? classes.link : classes.disable}
                                 onClick={() => this.handleClickOpen(comment)}
                             >
@@ -157,14 +160,14 @@ class CommentOptions extends React.Component {
                                     id='Apis.Details.Comments.CommentOptions.delete'
                                     defaultMessage='Delete'
                                 />
-                            </Typography>
+                            </Button>
                         </Grid>,
                         <Grid item key='key-delete-vertical-divider'>
                             <VerticalDivider height={15} />
                         </Grid>,
                     ]}
 
-                {/* {comment.parentCommentId == null && [
+                {AuthManager.getUser() && comment.parentCommentId == null && [
                     <Grid item key='key-reply'>
                         <Typography
                             component='a'
@@ -177,12 +180,10 @@ class CommentOptions extends React.Component {
                     <Grid item key='key-reply-vertical-divider'>
                         <VerticalDivider height={15} />
                     </Grid>,
-                ]} */}
-
-
+                ]}
 
                 {/* only the comment owner can modify the comment from the exact entry point */}
-                {comment.createdBy === AuthManager.getUser().name
+                {/* {comment.createdBy === AuthManager.getUser().name
                     && comment.entryPoint === 'APIStore' && [
                         <Grid item key='key-edit'>
                             <Typography
@@ -199,14 +200,13 @@ class CommentOptions extends React.Component {
                         <Grid item key='key-edit-verical-divider'>
                             <VerticalDivider height={15} />
                         </Grid>,
-                    ]}
+                    ]} */}
                 <Grid item className={classes.time}>
                     <Typography component='a' variant='caption'>
                         {this.displayDate(comment.createdTime)}
                     </Typography>
                 </Grid>
-
-                {editIndex === index
+                {/* {editIndex === index
                     ? null
                     : [
                         <Grid item key='key-category-vertical-divider'>
@@ -217,7 +217,7 @@ class CommentOptions extends React.Component {
                                 {comment.category}
                             </Typography>
                         </Grid>,
-                    ]}
+                    ]}  */}
             </Grid>
         );
     }

@@ -58,9 +58,6 @@ const styles = theme => ({
     margin: {
         marginRight: theme.spacing.unit * 2,
     },
-    keyTitle: {
-        textTransform: 'uppercase',
-    },
     keyConfigWrapper: {
         flexDirection: 'column',
         marginBottom: 0,
@@ -71,7 +68,8 @@ const styles = theme => ({
     },
     paper: {
         background: 'none',
-        marginBottom: theme.spacing.unit * 2,
+        marginBottom: theme.spacing(2),
+        marginTop: theme.spacing(2),
     },
 });
 
@@ -161,7 +159,6 @@ class TokenManager extends React.Component {
      */
     loadApplication = () => {
         this.getserverSupportedGrantTypes();
-        this.checkOwner();
         if (this.appId) {
             this.application
                 .then(application => application.getKeys())
@@ -187,16 +184,6 @@ class TokenManager extends React.Component {
                     }
                 });
         }
-    }
-
-    /**
-     * Check if the current user is the owner of the application
-     * @param {*} owner required param
-     */
-    checkOwner() {
-        const { selectedApp } = this.props;
-        const username = AuthManager.getUser().name;
-        this.setState({ isUserOwner: username.includes(selectedApp.owner) });
     }
 
     /**
@@ -268,7 +255,8 @@ class TokenManager extends React.Component {
                     applicationKey.consumerSecret,
                 );
             })
-            .then(() => {
+            .then((response) => {
+                this.setState({ keys: response.keys });
                 Alert.info(intl.formatMessage({
                     id: 'Shared.AppsAndKeys.TokenManager.key.update.success',
                     defaultMessage: 'Application keys updated successfully',
@@ -371,10 +359,16 @@ class TokenManager extends React.Component {
             classes, selectedApp, keyType,
         } = this.props;
         const {
-            keys, keyRequest, notFound, isKeyJWT, providedConsumerKey, providedConsumerSecret, isUserOwner,
+            keys, keyRequest, notFound, isKeyJWT, providedConsumerKey, providedConsumerSecret,
         } = this.state;
         if (!keys) {
             return <Loading />;
+        }
+        const username = AuthManager.getUser().name;
+        let isUserOwner = false;
+
+        if (selectedApp.owner && username === selectedApp.owner) {
+            isUserOwner = true;
         }
         const key = keys.get(keyType);
         if (keys.size > 0 && key && key.keyState === 'APPROVED' && !key.consumerKey) {
@@ -407,14 +401,14 @@ class TokenManager extends React.Component {
         // todo replace use of localStorage with useContext
         // const settingsData = localStorage.getItem('settings');
         // const { mapExistingAuthApps } = JSON.parse(settingsData);
-
+        const keyGrantTypes = key ? key.supportedGrantTypes : [];
         const settingsContext = this.context;
         const { mapExistingAuthApps } = settingsContext.settings;
 
         return (
             <div className={classes.root}>
-                <Typography variant='h5' className={classes.keyTitle}>
-                    {keyType + ' '}
+                <Typography variant='h5'>
+                    {keyType === 'PRODUCTION' ? 'Production ' : 'Sandbox '}
                     <FormattedMessage
                         defaultMessage='Key and Secret'
                         id='Shared.AppsAndKeys.TokenManager.key.and.secret'
@@ -425,6 +419,7 @@ class TokenManager extends React.Component {
                     keyType={keyType}
                     keys={keys}
                     isKeyJWT={isKeyJWT}
+                    selectedGrantTypes={keyGrantTypes}
                 />
                 <Paper className={classes.paper}>
                     <ExpansionPanel defaultExpanded>
@@ -434,7 +429,7 @@ class TokenManager extends React.Component {
                                     keys.size > 0 && keys.get(keyType)
                                         ? (
                                             <FormattedMessage
-                                                defaultMessage='Update Configuration'
+                                                defaultMessage='Key Configurations'
                                                 id='Shared.AppsAndKeys.TokenManager.update.configuration'
                                             />
                                         )

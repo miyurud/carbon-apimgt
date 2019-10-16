@@ -23,7 +23,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.json.simple.JSONObject;
 import org.wso2.carbon.apimgt.api.APIConsumer;
 import org.wso2.carbon.apimgt.api.APIManagementException;
-import org.wso2.carbon.apimgt.api.APIProvider;
 import org.wso2.carbon.apimgt.api.model.API;
 import org.wso2.carbon.apimgt.api.model.APIIdentifier;
 import org.wso2.carbon.apimgt.api.model.APIProduct;
@@ -326,8 +325,9 @@ public class APIMappingUtil {
     public static API getAPIInfoFromUUID(String apiUUID, String requestedTenantDomain)
             throws APIManagementException {
         API api;
-        APIProvider apiProvider = RestApiUtil.getLoggedInUserProvider();
-        api = apiProvider.getLightweightAPIByUUID(apiUUID, requestedTenantDomain);
+        String username = RestApiUtil.getLoggedInUsername();
+        APIConsumer apiConsumer = RestApiUtil.getConsumer(username);
+        api = apiConsumer.getLightweightAPIByUUID(apiUUID, requestedTenantDomain);
         return api;
     }
 
@@ -406,7 +406,6 @@ public class APIMappingUtil {
     public static RatingDTO fromJsonToRatingDTO(JSONObject obj) {
         RatingDTO ratingDTO = new RatingDTO();
         if (obj != null) {
-            ratingDTO.setApiId(String.valueOf(obj.get(APIConstants.API_ID)));
             ratingDTO.setRatingId(String.valueOf(obj.get(APIConstants.RATING_ID)));
             ratingDTO.setRatedBy((String) obj.get(APIConstants.USERNAME));
             ratingDTO.setRating((Integer) obj.get(APIConstants.RATING));
@@ -546,6 +545,12 @@ public class APIMappingUtil {
             throttlingPolicyNames.add(tier.getName());
         }
         apiInfoDTO.setThrottlingPolicies(throttlingPolicyNames);
+        APIBusinessInformationDTO apiBusinessInformationDTO = new APIBusinessInformationDTO();
+        apiBusinessInformationDTO.setBusinessOwner(api.getBusinessOwner());
+        apiBusinessInformationDTO.setBusinessOwnerEmail(api.getBusinessOwnerEmail());
+        apiBusinessInformationDTO.setTechnicalOwner(api.getTechnicalOwner());
+        apiBusinessInformationDTO.setTechnicalOwnerEmail(api.getTechnicalOwnerEmail());
+        apiInfoDTO.setBusinessInformation(apiBusinessInformationDTO);
         //        if (api.getScopes() != null) {
         //            apiInfoDTO.setScopes(getScopeInfoDTO(api.getScopes()));
         //        }
@@ -582,7 +587,12 @@ public class APIMappingUtil {
             throttlingPolicyNames.add(tier.getName());
         }
         apiInfoDTO.setThrottlingPolicies(throttlingPolicyNames);
-
+        APIBusinessInformationDTO apiBusinessInformationDTO = new APIBusinessInformationDTO();
+        apiBusinessInformationDTO.setBusinessOwner(apiProduct.getBusinessOwner());
+        apiBusinessInformationDTO.setBusinessOwnerEmail(apiProduct.getBusinessOwnerEmail());
+        apiBusinessInformationDTO.setTechnicalOwner(apiProduct.getTechnicalOwner());
+        apiBusinessInformationDTO.setTechnicalOwnerEmail(apiProduct.getTechnicalOwnerEmail());
+        apiInfoDTO.setBusinessInformation(apiBusinessInformationDTO);
         //Since same APIInfoDTO is used for listing APIProducts in StoreUI set default AdvertisedInfo to the DTO
         AdvertiseInfoDTO advertiseInfoDTO = new AdvertiseInfoDTO();
         advertiseInfoDTO.setAdvertised(false);

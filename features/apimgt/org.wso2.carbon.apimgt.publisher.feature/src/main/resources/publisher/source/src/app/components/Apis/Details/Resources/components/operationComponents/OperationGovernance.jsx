@@ -30,7 +30,11 @@ import MenuItem from '@material-ui/core/MenuItem';
 import Tooltip from '@material-ui/core/Tooltip';
 import HelpOutline from '@material-ui/icons/HelpOutline';
 import LaunchIcon from '@material-ui/icons/Launch';
+import IconButton from '@material-ui/core/IconButton';
+import DeleteIcon from '@material-ui/icons/Delete';
 import { Link } from 'react-router-dom';
+import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
+import { getOperationScopes } from '../../operationUtils';
 
 /**
  *
@@ -41,9 +45,10 @@ import { Link } from 'react-router-dom';
  */
 export default function OperationGovernance(props) {
     const {
-        operation, operationActionsDispatcher, operationRateLimits, api, disableUpdate,
+        operation, operationsDispatcher, operationRateLimits, api, disableUpdate, spec, target, verb,
     } = props;
     const isOperationRateLimiting = api.apiThrottlingPolicy === null;
+
     return (
         <Fragment>
             <Grid item md={12}>
@@ -61,11 +66,11 @@ export default function OperationGovernance(props) {
                     <FormControlLabel
                         control={
                             <Switch
-                                checked={operation.authType && operation.authType.toLowerCase() !== 'none'}
+                                checked={operation['x-auth-type'] && operation['x-auth-type'].toLowerCase() !== 'none'}
                                 onChange={({ target: { checked } }) =>
-                                    operationActionsDispatcher({
+                                    operationsDispatcher({
                                         action: 'authType',
-                                        event: { value: checked },
+                                        data: { target, verb, value: checked },
                                     })
                                 }
                                 size='small'
@@ -94,7 +99,10 @@ export default function OperationGovernance(props) {
                     id='operation_rate_limiting_policy'
                     select
                     fullWidth={!isOperationRateLimiting}
-                    SelectProps={{ autoWidth: true }}
+                    SelectProps={{
+                        autoWidth: true,
+                        IconComponent: isOperationRateLimiting ? ArrowDropDownIcon : 'span',
+                    }}
                     disabled={disableUpdate || !isOperationRateLimiting}
                     label={
                         isOperationRateLimiting ? (
@@ -108,11 +116,13 @@ export default function OperationGovernance(props) {
                             </div>
                         )
                     }
-                    value={isOperationRateLimiting ? operation.throttlingPolicy : ''}
+                    value={
+                        isOperationRateLimiting && operation['x-throttling-tier'] ? operation['x-throttling-tier'] : ''
+                    }
                     onChange={({ target: { value } }) =>
-                        operationActionsDispatcher({
+                        operationsDispatcher({
                             action: 'throttlingPolicy',
-                            event: { value },
+                            data: { target, verb, value },
                         })
                     }
                     helperText={
@@ -146,11 +156,11 @@ export default function OperationGovernance(props) {
                     select
                     disabled={disableUpdate}
                     label='Operation scope'
-                    value={operation.scopes[0]}
+                    value={getOperationScopes(operation, spec)[0]}
                     onChange={({ target: { value } }) =>
-                        operationActionsDispatcher({
+                        operationsDispatcher({
                             action: 'scopes',
-                            event: { value: [value] },
+                            data: { target, verb, value: [value] },
                         })
                     }
                     helperText='Select a scope to control permissions to this operation'
@@ -163,6 +173,14 @@ export default function OperationGovernance(props) {
                         </MenuItem>
                     ))}
                 </TextField>
+                <Tooltip title='Remove scope'>
+                    <IconButton
+                        onClick={() => operationsDispatcher({ action: 'scopes', data: { target, verb, value: [] } })}
+                        aria-label='delete'
+                    >
+                        <DeleteIcon fontSize='small' />
+                    </IconButton>
+                </Tooltip>
                 {!disableUpdate && (
                     <Link to={`/apis/${api.id}/scopes/create`} target='_blank'>
                         <Typography style={{ marginLeft: '10px' }} color='primary' display='inline' variant='caption'>
@@ -181,11 +199,13 @@ OperationGovernance.propTypes = {
     operation: PropTypes.shape({
         target: PropTypes.string.isRequired,
         verb: PropTypes.string.isRequired,
-        spec: PropTypes.shape({}).isRequired,
     }).isRequired,
-    operationActionsDispatcher: PropTypes.func.isRequired,
+    spec: PropTypes.shape({}).isRequired,
+    operationsDispatcher: PropTypes.func.isRequired,
     operationRateLimits: PropTypes.arrayOf(PropTypes.shape({})),
     api: PropTypes.shape({ scopes: PropTypes.arrayOf(PropTypes.shape({})) }),
+    target: PropTypes.string.isRequired,
+    verb: PropTypes.string.isRequired,
 };
 
 OperationGovernance.defaultProps = {

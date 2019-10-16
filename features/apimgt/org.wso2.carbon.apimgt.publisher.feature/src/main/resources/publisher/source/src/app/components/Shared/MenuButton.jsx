@@ -12,10 +12,10 @@ const styles = theme => ({
         display: 'flex',
     },
     paper: {
-        marginRight: theme.spacing.unit * 2,
+        marginRight: theme.spacing(2),
     },
     position: {
-        zIndex: 101,
+        zIndex: theme.zIndex.apiCreateMenu,
     },
 });
 
@@ -74,6 +74,7 @@ class MenuButton extends React.Component {
         return (
             <React.Fragment>
                 <Button
+                    id='itest-id-createapi'
                     buttonRef={(node) => {
                         this.anchorEl = node;
                     }}

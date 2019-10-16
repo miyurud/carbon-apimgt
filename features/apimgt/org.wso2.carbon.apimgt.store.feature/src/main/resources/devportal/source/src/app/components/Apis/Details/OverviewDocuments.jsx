@@ -32,7 +32,7 @@ import API from '../../../data/api';
 const styles = theme => ({
     root: {
         padding: theme.spacing.unit * 3,
-        width: theme.custom.contentAreaWidth,
+        maxWidth: theme.custom.contentAreaWidth,
     },
     iconClass: {
         marginRight: 10,
@@ -84,13 +84,14 @@ function OverviewDocuments(props) {
 
     useEffect(() => {
         const restApi = new API();
-        const { apiId } = props;
+        const { apiId, setDocsCount } = props;
         const promisedApi = restApi.getDocumentsByAPIId(apiId);
         promisedApi
             .then((response) => {
                 if (response.obj.list.length > 0) {
                     // Rearanging the response to group them by the sourceType property.
                     setDocs(response.obj.list);
+                    setDocsCount(response.obj.count);
                 }
             })
             .catch((error) => {

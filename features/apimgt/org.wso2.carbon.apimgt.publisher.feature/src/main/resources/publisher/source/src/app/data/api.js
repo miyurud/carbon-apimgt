@@ -93,57 +93,6 @@ class API extends Resource {
         return copy;
     }
 
-    /**
-     * Create an API with the given parameters in template and call the callback method given optional.
-     * @param {Object} apiData - API data which need to fill the placeholder values in the @get_template
-     * @param {function} callback - An optional callback method
-     * @returns {Promise} Promise after creating and optionally calling the callback method.
-     */
-    create(apiData, callback = null) {
-        let payload;
-        let promise_create;
-        if (apiData.constructor.name === 'Blob' || apiData.constructor.name === 'File') {
-            payload = {
-                file: apiData,
-                'Content-Type': 'multipart/form-data',
-            };
-            promise_create = this.client.then(client => {
-                return client.apis['APIs'].post_apis_import_definition(
-                    payload,
-                    this._requestMetaData({
-                        'Content-Type': 'multipart/form-data',
-                    }),
-                );
-            });
-        } else if (apiData.type === 'swagger-url') {
-            payload = {
-                url: apiData.url,
-                'Content-Type': 'multipart/form-data',
-            };
-            promise_create = this.client.then(client => {
-                return client.apis['APIs'].post_apis_import_definition(
-                    payload,
-                    this._requestMetaData({
-                        'Content-Type': 'multipart/form-data',
-                    }),
-                );
-            });
-        } else {
-            payload = {
-                body: apiData,
-                openAPIVersion: 'v3',
-            };
-            promise_create = this.client.then(client => {
-                return client.apis['APIs'].post_apis(payload, this._requestMetaData());
-            });
-        }
-        if (callback) {
-            return promise_create.then(callback);
-        } else {
-            return promise_create;
-        }
-    }
-
     importOpenAPIByFile(openAPIData, callback = null) {
         let payload, promisedCreate;
         promisedCreate = this.client.then(client => {
@@ -687,6 +636,62 @@ class API extends Resource {
             );
         });
         return promised_update;
+    }
+
+    /**
+     * Update API definition of a given API by URL content
+     * @param apiId         API Identifier
+     * @param openAPIUrl    OpenAPI definition content URL
+     * @returns {boolean|*}
+     */
+    updateAPIDefinitionByUrl(apiId, openAPIUrl) {
+        let payload, promise_updated;
+
+        promise_updated = this.client.then(client => {
+            const apiData = this.getDataFromSpecFields(client);
+
+        payload = {
+            apiId: apiId,
+            url: openAPIUrl
+        };
+
+        const promisedResponse = client.apis['APIs'].put_apis__apiId__swagger(
+            payload,
+            this._requestMetaData({
+                'Content-Type': 'multipart/form-data',
+            }),
+        );
+        return promisedResponse.then(response => new API(response.body));
+      });
+        return promise_updated;
+    }
+
+    /**
+     * Update API definition of a given API by file content
+     * @param apiId         API Identifier
+     * @param openAPIFile   OpenAPI definition file content
+     * @returns {boolean|*}
+     */
+    updateAPIDefinitionByFile(apiId, openAPIFile) {
+        let payload, promise_updated;
+
+        promise_updated = this.client.then(client => {
+            const apiData = this.getDataFromSpecFields(client);
+
+        payload = {
+            apiId: apiId,
+            file: openAPIFile
+        };
+
+        const promisedResponse = client.apis['APIs'].put_apis__apiId__swagger(
+            payload,
+            this._requestMetaData({
+                'Content-Type': 'multipart/form-data',
+            }),
+        );
+        return promisedResponse.then(response => new API(response.body));
+    });
+        return promise_updated;
     }
 
     /**
@@ -1355,6 +1360,13 @@ class API extends Resource {
     validateUSerRole(role) {
         const promise = this.client.then((client) => {
             return client.apis.Roles.validateUserRole({ roleId: role })
+        });
+        return promise;
+    }
+
+    validateScopeName(name) {
+        const promise = this.client.then((client) => {
+            return client.apis.scope.validateScope({ name: name })
         });
         return promise;
     }

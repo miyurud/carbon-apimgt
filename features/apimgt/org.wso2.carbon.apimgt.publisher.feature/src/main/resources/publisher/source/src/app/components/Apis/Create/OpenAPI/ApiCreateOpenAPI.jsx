@@ -163,16 +163,13 @@ export default function ApiCreateOpenAPI(props) {
                     <Typography variant='h5'>
                         <FormattedMessage
                             id='Apis.Create.OpenAPI.ApiCreateOpenAPI.heading'
-                            defaultMessage='Create an API using OpenAPI definition'
+                            defaultMessage='Create an API using an OpenAPI definition.'
                         />
                     </Typography>
                     <Typography variant='caption'>
                         <FormattedMessage
                             id='Apis.Create.OpenAPI.ApiCreateOpenAPI.sub.heading'
-                            defaultMessage={
-                                'Use an existing OpenAPI definition file or URL' +
-                                ' to create an API in WSO2 API Manager.'
-                            }
+                            defaultMessage='Create an API using an existing OpenAPI definition (swagger) file or URL.'
                         />
                     </Typography>
                 </React.Fragment>
@@ -201,9 +198,9 @@ export default function ApiCreateOpenAPI(props) {
             </Box>
 
             <Grid container spacing={3}>
-                <Grid item md={12} />
-                <Grid item md={1} />
-                <Grid item md={11}>
+                <Grid item xs={12} />
+                <Grid item xs={1} />
+                <Grid item xs={11}>
                     {wizardStep === 0 && (
                         <ProvideOpenAPI
                             onValidate={handleOnValidate}
@@ -216,11 +213,12 @@ export default function ApiCreateOpenAPI(props) {
                             onValidate={handleOnValidate}
                             onChange={handleOnChange}
                             api={apiInputs}
+                            isAPIProduct={false}
                         />
                     )}
                 </Grid>
-                <Grid item md={1} />
-                <Grid item md={9}>
+                <Grid item xs={1} />
+                <Grid item xs={11}>
                     <Grid container direction='row' justify='flex-start' alignItems='center' spacing={2}>
                         <Grid item>
                             {wizardStep === 0 && (

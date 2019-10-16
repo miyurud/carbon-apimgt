@@ -18,6 +18,27 @@
 
 import Joi from '@hapi/joi';
 import API from 'AppData/api';
+import queryString from 'query-string';
+
+/**
+ * Get the base error message for error types.
+ * This error overrides the default error messages of joi and adds simple error messages.
+ *
+ * @param {string} errorType The joi error type
+ * @return {string} simplified error message.
+ * */
+function getMessage(errorType) {
+    switch (errorType) {
+        case 'any.empty':
+            return 'should not be empty';
+        case 'string.regex.base':
+            return 'should not contain spaces or special characters';
+        case 'string.max':
+            return 'has exceeded the maximum number of characters';
+        default:
+            return 'should not be empty';
+    }
+}
 
 /*
 * eslint validation rule for no-unused-vars has been disabled in this component.
@@ -34,6 +55,20 @@ const roleSchema = Joi.extend(joi => ({
             validate(params, value, state, options) { // eslint-disable-line no-unused-vars
                 const api = new API();
                 return api.validateSystemRole(value);
+            },
+        },
+    ],
+}));
+
+const scopeSchema = Joi.extend(joi => ({
+    base: joi.string(),
+    name: 'scopes',
+    rules: [
+        {
+            name: 'scope',
+            validate(params, value, state, options) { // eslint-disable-line no-unused-vars
+                const api = new API();
+                return api.validateScopeName(value);
             },
         },
     ],
@@ -60,8 +95,12 @@ const apiSchema = Joi.extend(joi => ({
         {
             name: 'isAPIParameterExist',
             validate(params, value, state, options) { // eslint-disable-line no-unused-vars
-                const api = new API();
-                return api.validateAPIParameter(value);
+                const inputValue = value.trim().toLowerCase();
+                const composeQuery = '?query=' + inputValue;
+                const composeQueryJSON = queryString.parse(composeQuery);
+                composeQueryJSON.limit = 1;
+                composeQueryJSON.offset = 0;
+                return API.search(composeQueryJSON);
             },
         },
     ],
@@ -82,15 +121,38 @@ const documentSchema = Joi.extend(joi => ({
 }));
 
 const definition = {
-    apiName: Joi.string().regex(/^[a-zA-Z0-9]{1,50}$/),
-    apiVersion: Joi.string().regex(/^[a-zA-Z0-9.]{1,30}$/),
-    apiContext: Joi.string().regex(/(?!.*\/t\/.*|.*\/t$)^[/a-zA-Z0-9/]{1,50}$/),
+    apiName: Joi.string().max(30).regex(/^[^~!@#;:%^*()+={}|\\<>"',&/$]+$/).required()
+        .error((errors) => {
+            return errors.map(error => ({ ...error, message: 'Name ' + getMessage(error.type) }));
+        }),
+    apiVersion: Joi.string().regex(/^[^~!@#;:%^*()+={}|\\<>"',&/$]+$/).required().error((errors) => {
+        const tmpErrors = [...errors];
+        errors.forEach((err, index) => {
+            const tmpError = { ...err };
+            tmpError.message = 'API Version ' + getMessage(err.type);
+            tmpErrors[index] = tmpError;
+        });
+        return tmpErrors;
+    }),
+    apiContext: Joi.string().max(60).regex(/^[^~!@#;:%^*()+={}|\\<>"',&$]+$/).required()
+        .error((errors) => {
+            return errors.map(error => ({ ...error, message: 'Context ' + getMessage(error.type) }));
+        }),
     role: roleSchema.systemRole().role(),
-    url: Joi.string().uri(),
+    scope: scopeSchema.scopes().scope(),
+    url: Joi.string().uri().error((errors) => {
+        const tmpErrors = [...errors];
+        errors.forEach((err, index) => {
+            const tmpError = { ...err };
+            tmpError.message = 'URL ' + getMessage(err.type);
+            tmpErrors[index] = tmpError;
+        });
+        return tmpErrors;
+    }),
     userRole: userRoleSchema.userRole().role(),
     apiParameter: apiSchema.api().isAPIParameterExist(),
     apiDocument: documentSchema.document().isDocumentPresent(),
-    operationVerb: Joi.string().required(),
+    operationVerbs: Joi.array().items(Joi.string()).min(1).unique(),
     operationTarget: Joi.string().required(),
     name: Joi.string().min(1).max(255),
     email: Joi.string().email({ tlds: true }).required(),

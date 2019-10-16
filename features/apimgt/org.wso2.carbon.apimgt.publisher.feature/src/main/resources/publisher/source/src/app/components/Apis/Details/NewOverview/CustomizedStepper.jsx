@@ -34,8 +34,8 @@ import ArrowForwardIosRoundedIcon from '@material-ui/icons/ArrowForwardIosRounde
 import Tooltip from '@material-ui/core/Tooltip';
 import Button from '@material-ui/core/Button';
 import ApiContext, { useAPI } from 'AppComponents/Apis/Details/components/ApiContext';
+import { useAppContext } from 'AppComponents/Shared/AppContext';
 import Alert from 'AppComponents/Shared/Alert';
-import Configuration from 'Config';
 import CircularProgress from '@material-ui/core/CircularProgress';
 
 
@@ -90,7 +90,7 @@ const useStyles = makeStyles(theme => ({
         right: '-76px',
         fontSize: '7.9461rem',
         color: theme.palette.background.default,
-        zIndex: '1',
+        zIndex: theme.zIndex.overviewArrow,
     },
     label: {
         paddingLeft: '0',
@@ -121,6 +121,7 @@ const useStyles = makeStyles(theme => ({
 export default function CustomizedSteppers() {
     const [api, updateAPI] = useAPI();
     const classes = useStyles();
+    const { settings } = useAppContext();
     const isEndpointAvailable = api.endpointConfig !== null;
     const isTierAvailable = api.policies.length !== 0;
     const isPrototypedAvailable =
@@ -185,19 +186,22 @@ export default function CustomizedSteppers() {
                                 target='_blank'
                                 rel='noopener noreferrer'
                                 href={
-                                    `${window.location.origin}${Configuration.app.storeContext}/apis/` +
+                                    `${settings.storeUrl}/apis/` +
                                     api.id +
                                     '/overview'
                                 }
                                 className={classes.viewInStoreLauncher}
                             >
-                                <Typography variant='caption'>
+                                <Typography
+                                    variant='caption'
+                                    color='primary'
+                                >
                                     <FormattedMessage
                                         id='Apis.Details.components.APIDetailsTopMenu.view.in.portal'
                                         defaultMessage='View in Dev Portal'
                                     />
+                                    <LaunchIcon style={{ marginLeft: '5px' }} fontSize='small' />
                                 </Typography>
-                                <LaunchIcon style={{ marginLeft: '5px' }} fontSize='small' />
                             </a>
                         </Grid>
                     </Grid>
@@ -310,7 +314,10 @@ export default function CustomizedSteppers() {
                 <Step className={classes.label}>
                     <StepLabel style={{ position: 'relative' }} >
                         <Box p={2} bgcolor='white' borderLeft='0' borderRight='0' >
-                            <Tooltip title='You have to specify an Endpoint for the API' placement='top'>
+                            <Tooltip
+                                title={isEndpointAvailable ? '' : 'You have to specify an endpoint for the API'}
+                                placement='top'
+                            >
                                 <Grid className={classes.gridEndpoint}>
                                     {isEndpointAvailable ? (
                                         <CheckIcon className={classes.iconTrue} />
@@ -324,11 +331,14 @@ export default function CustomizedSteppers() {
                                         />
                                     </Typography>
                                     <Link to={'/apis/' + api.id + '/endpoints'}>
-                                        <LaunchIcon style={{ marginLeft: '5px' }} fontSize='small' />
+                                        <LaunchIcon style={{ marginLeft: '5px' }} color='primary' fontSize='small' />
                                     </Link>
                                 </Grid>
                             </Tooltip>
-                            <Tooltip title='You have to select the Business plan for the API' placement='bottom'>
+                            <Tooltip
+                                title={isTierAvailable ? '' : 'You have to select the business plan for the API'}
+                                placement='bottom'
+                            >
                                 <Grid xs={12} className={classes.gridSmall}>
                                     {isTierAvailable ? (
                                         <CheckIcon className={classes.iconTrue} />
@@ -342,7 +352,7 @@ export default function CustomizedSteppers() {
                                         />
                                     </Typography>
                                     <Link to={'/apis/' + api.id + '/subscriptions'}>
-                                        <LaunchIcon style={{ marginLeft: '5px' }} fontSize='small' />
+                                        <LaunchIcon style={{ marginLeft: '5px' }} color='primary' fontSize='small' />
                                     </Link>
                                 </Grid>
                             </Tooltip>

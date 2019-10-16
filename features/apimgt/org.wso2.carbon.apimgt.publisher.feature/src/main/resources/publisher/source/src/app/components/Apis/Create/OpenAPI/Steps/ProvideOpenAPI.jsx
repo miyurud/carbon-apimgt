@@ -151,14 +151,14 @@ export default function ProvideOpenAPI(props) {
     return (
         <React.Fragment>
             <Grid container spacing={5}>
-                <Grid item md={12}>
+                <Grid item xs={12} md={12}>
                     <FormControl component='fieldset'>
                         <FormLabel component='legend'>
                             <React.Fragment>
                                 <sup className={classes.mandatoryStar}>*</sup>{' '}
                                 <FormattedMessage
                                     id='Apis.Create.OpenAPI.Steps.ProvideOpenAPI.Input.type'
-                                    defaultMessage='Input type'
+                                    defaultMessage='Input Type'
                                 />
                             </React.Fragment>
                         </FormLabel>
@@ -167,12 +167,12 @@ export default function ProvideOpenAPI(props) {
                             value={apiInputs.inputType}
                             onChange={event => inputsDispatcher({ action: 'inputType', value: event.target.value })}
                         >
-                            <FormControlLabel value='url' control={<Radio />} label='OpenAPI URL' />
-                            <FormControlLabel value='file' control={<Radio />} label='OpenAPI File' />
+                            <FormControlLabel value='url' control={<Radio color='primary' />} label='OpenAPI URL' />
+                            <FormControlLabel value='file' control={<Radio color='primary' />} label='OpenAPI File' />
                         </RadioGroup>
                     </FormControl>
                 </Grid>
-                <Grid item md={7}>
+                <Grid item xs={10} md={7}>
                     {isFileInput ? (
                         <React.Fragment>
                             <DropZoneLocal error={isValid.file} onDrop={onDrop} files={apiInputs.inputValue}>
@@ -214,6 +214,7 @@ export default function ProvideOpenAPI(props) {
                         />
                     )}
                 </Grid>
+                <Grid item xs={2} md={5} />
             </Grid>
         </React.Fragment>
     );

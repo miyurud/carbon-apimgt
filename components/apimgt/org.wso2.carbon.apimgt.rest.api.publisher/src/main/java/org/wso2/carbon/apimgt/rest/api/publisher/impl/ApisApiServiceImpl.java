@@ -591,8 +591,8 @@ public class ApisApiServiceImpl extends ApisApiService {
             //Getting the api base path out apiResourcePath
             apiResourcePath = apiResourcePath.substring(0, apiResourcePath.lastIndexOf("/"));
             //Getting specified mediation policy
-            Mediation mediation = apiProvider.getApiSpecificMediationPolicy(apiResourcePath,
-                    mediationPolicyId);
+            Mediation mediation =
+                    apiProvider.getApiSpecificMediationPolicy(apiIdentifier, apiResourcePath, mediationPolicyId);
             if (mediation != null) {
                 if (isAPIModified(api, mediation)) {
                     apiProvider.updateAPI(api);
@@ -600,8 +600,8 @@ public class ApisApiServiceImpl extends ApisApiService {
             } else {
                 RestApiUtil.handleResourceNotFoundError(RestApiConstants.RESOURCE_POLICY, mediationPolicyId, log);
             }
-            boolean deletionStatus = apiProvider.deleteApiSpecificMediationPolicy(apiResourcePath,
-                    mediationPolicyId);
+            boolean deletionStatus =
+                    apiProvider.deleteApiSpecificMediationPolicy(apiIdentifier, apiResourcePath, mediationPolicyId);
             if (deletionStatus) {
                 return Response.ok().build();
             } else {
@@ -652,8 +652,8 @@ public class ApisApiServiceImpl extends ApisApiService {
             //Getting the api base path out of apiResourcePath
             apiResourcePath = apiResourcePath.substring(0, apiResourcePath.lastIndexOf("/"));
             //Getting specified mediation policy
-            Mediation mediation = apiProvider.getApiSpecificMediationPolicy(apiResourcePath,
-                    mediationPolicyId);
+            Mediation mediation =
+                    apiProvider.getApiSpecificMediationPolicy(apiIdentifier, apiResourcePath, mediationPolicyId);
             if (mediation != null) {
                 MediationDTO mediationDTO =
                         MediationMappingUtil.fromMediationToDTO(mediation);
@@ -709,8 +709,8 @@ public class ApisApiServiceImpl extends ApisApiService {
             //Getting the api base path out of apiResourcePath
             apiResourcePath = apiResourcePath.substring(0, apiResourcePath.lastIndexOf("/"));
             //Getting resource correspond to the given uuid
-            Resource mediationResource = apiProvider.getApiSpecificMediationResourceFromUuid
-                    (mediationPolicyId, apiResourcePath);
+            Resource mediationResource = apiProvider
+                    .getApiSpecificMediationResourceFromUuid(apiIdentifier, mediationPolicyId, apiResourcePath);
             if (mediationResource != null) {
                 //extracting already existing name of the mediation policy
                 String contentString = IOUtils.toString(mediationResource.getContentStream(),
@@ -733,12 +733,11 @@ public class ApisApiServiceImpl extends ApisApiService {
                 String resourcePath = mediationResource.getPath();
 
                 //Updating the existing mediation policy
-                String updatedPolicyUrl = apiProvider.addResourceFile(resourcePath, contentFile);
+                String updatedPolicyUrl = apiProvider.addResourceFile(apiIdentifier, resourcePath, contentFile);
                 if (StringUtils.isNotBlank(updatedPolicyUrl)) {
                     String uuid = apiProvider.getCreatedResourceUuid(resourcePath);
                     //Getting the updated mediation policy
-                    updatedMediation = apiProvider.getApiSpecificMediationPolicy
-                            (apiResourcePath, uuid);
+                    updatedMediation = apiProvider.getApiSpecificMediationPolicy(apiIdentifier, apiResourcePath, uuid);
                     MediationDTO updatedMediationDTO =
                             MediationMappingUtil.fromMediationToDTO(updatedMediation);
                     URI uploadedMediationUri = new URI(updatedPolicyUrl);
@@ -822,13 +821,12 @@ public class ApisApiServiceImpl extends ApisApiService {
                         "exists in the given resource path, cannot create new", log);
             }
             //Adding api specific mediation policy
-            String mediationPolicyUrl = apiProvider.addResourceFile(mediationResourcePath, contentFile);
+            String mediationPolicyUrl = apiProvider.addResourceFile(apiIdentifier, mediationResourcePath, contentFile);
             if (StringUtils.isNotBlank(mediationPolicyUrl)) {
                 //Getting the uuid of created mediation policy
                 String uuid = apiProvider.getCreatedResourceUuid(mediationResourcePath);
                 //Getting created Api specific mediation policy
-                createdMediation = apiProvider.getApiSpecificMediationPolicy
-                        (apiResourcePath, uuid);
+                createdMediation = apiProvider.getApiSpecificMediationPolicy(apiIdentifier, apiResourcePath, uuid);
                 MediationDTO createdPolicy =
                         MediationMappingUtil.fromMediationToDTO(createdMediation);
                 URI uploadedMediationUri = new URI(mediationPolicyUrl);
@@ -929,11 +927,12 @@ public class ApisApiServiceImpl extends ApisApiService {
             //attach micro-geteway labels
             apiToUpdate = assignLabelsToDTO(body,apiToUpdate);
 
-            apiProvider.updateAPI(apiToUpdate);
-
             if (!isWSAPI) {
                 apiProvider.saveSwagger20Definition(apiToUpdate.getId(), body.getApiDefinition());
             }
+
+            apiProvider.updateAPI(apiToUpdate);
+
             API updatedApi = apiProvider.getAPI(apiIdentifier);
             updatedApiDTO = APIMappingUtil.fromAPItoDTO(updatedApi);
             return Response.ok().entity(updatedApiDTO).build();
@@ -1340,6 +1339,8 @@ public class ApisApiServiceImpl extends ApisApiService {
         try {
             APIProvider apiProvider = RestApiUtil.getLoggedInUserProvider();
             String tenantDomain = RestApiUtil.getLoggedInUserTenantDomain();
+            //this will fail if user does not have access to the API or the API does not exist
+            APIIdentifier apiIdentifier = APIMappingUtil.getAPIIdentifierFromApiIdOrUUID(apiId, tenantDomain);
             String sourceUrl = body.getSourceUrl();
             Documentation oldDocument = apiProvider.getDocumentation(documentId, tenantDomain);
 
@@ -1363,8 +1364,6 @@ public class ApisApiServiceImpl extends ApisApiService {
             body.setName(oldDocument.getName());
 
             Documentation newDocumentation = DocumentationMappingUtil.fromDTOtoDocumentation(body);
-            //this will fail if user does not have access to the API or the API does not exist
-            APIIdentifier apiIdentifier = APIMappingUtil.getAPIIdentifierFromApiIdOrUUID(apiId, tenantDomain);
             newDocumentation.setFilePath(oldDocument.getFilePath());
             apiProvider.updateDocumentation(apiIdentifier, newDocumentation);
 
@@ -1676,7 +1675,7 @@ public class ApisApiServiceImpl extends ApisApiService {
             API api = APIMappingUtil.getAPIFromApiIdOrUUID(apiId, tenantDomain);
             ResourceFile apiImage = new ResourceFile(fileInputStream, fileContentType);
             String thumbPath = APIUtil.getIconPath(api.getId());
-            String thumbnailUrl = apiProvider.addResourceFile(thumbPath, apiImage);
+            String thumbnailUrl = apiProvider.addResourceFile(api.getId(), thumbPath, apiImage);
             api.setThumbnailUrl(APIUtil.prependTenantPrefix(thumbnailUrl, api.getId().getProviderName()));
             APIUtil.setResourcePermissions(api.getId().getProviderName(), null, null, thumbPath);
 
@@ -1852,9 +1851,9 @@ public class ApisApiServiceImpl extends ApisApiService {
             existingAPI.setUriTemplates(uriTemplates);
             existingAPI.setScopes(scopes);
 
+            apiProvider.saveSwagger20Definition(existingAPI.getId(), apiDefinition);
             //Update API is called to update URITemplates and scopes of the API
             apiProvider.updateAPI(existingAPI);
-            apiProvider.saveSwagger20Definition(existingAPI.getId(), apiDefinition);
             //retrieves the updated swagger definition
             String apiSwagger = apiProvider.getOpenAPIDefinition(existingAPI.getId());
             return Response.ok().entity(apiSwagger).build();

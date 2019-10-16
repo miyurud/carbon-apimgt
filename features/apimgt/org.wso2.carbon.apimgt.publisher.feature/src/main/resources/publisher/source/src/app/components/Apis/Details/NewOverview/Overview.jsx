@@ -121,6 +121,12 @@ const styles = theme => ({
     notConfigured: {
         color: 'rgba(0, 0, 0, 0.40)',
     },
+    url: {
+        maxWidth: '100%',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+    },
 });
 
 /**
@@ -185,7 +191,9 @@ function Overview(props) {
                             <div className={classes.specialGap}>
                                 <Grid container spacing={24}>
                                     <Grid item xs={12} md={6} lg={6}>
-                                        {getResourcesClassForAPIs(api.type)}
+                                        <Grid item xs={12} md={8} lg={8}>
+                                            {getResourcesClassForAPIs(api.type)}
+                                        </Grid>
                                     </Grid>
                                     <Grid item xs={12} md={6} lg={6}>
                                         {loadEndpoints}

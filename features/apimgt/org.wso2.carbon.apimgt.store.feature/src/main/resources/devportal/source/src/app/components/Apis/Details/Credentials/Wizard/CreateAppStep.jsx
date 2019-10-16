@@ -17,6 +17,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import Box from '@material-ui/core/Box';
+import Grid from '@material-ui/core/Grid';
 import ApplicationCreateForm from 'AppComponents/Shared/AppsAndKeys/ApplicationCreateForm';
 import API from 'AppData/api';
 import Alert from 'AppComponents/Shared/Alert';
@@ -37,7 +39,6 @@ const createAppStep = (props) => {
         tokenType: 'JWT',
     });
     const [isNameValid, setIsNameValid] = useState(true);
-
     const [notFound, setNotFound] = useState(false);
     const {
         currentStep, setCreatedApp, incrementStep, intl, setStepStatus, stepStatuses, classes,
@@ -112,13 +113,17 @@ const createAppStep = (props) => {
 
     return (
         <React.Fragment>
-            <ApplicationCreateForm
-                throttlingPolicyList={throttlingPolicyList}
-                applicationRequest={applicationRequest}
-                updateApplicationRequest={setApplicationRequest}
-                validateName={validateName}
-                isNameValid={isNameValid}
-            />
+            <Box px={2} display='flex' justifyContent='flex-start'>
+                <Grid item xs={10} md={6}>
+                    <ApplicationCreateForm
+                        throttlingPolicyList={throttlingPolicyList}
+                        applicationRequest={applicationRequest}
+                        updateApplicationRequest={setApplicationRequest}
+                        validateName={validateName}
+                        isNameValid={isNameValid}
+                    />
+                </Grid>
+            </Box>
             <ButtonPanel
                 classes={classes}
                 currentStep={currentStep}

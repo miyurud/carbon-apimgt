@@ -14,18 +14,14 @@
  * limitations under the License.
  */
 
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import {
     Collapse,
     ExpansionPanel,
     ExpansionPanelDetails,
     ExpansionPanelSummary,
-    FormControl,
     FormControlLabel,
     Grid,
-    InputLabel,
-    MenuItem,
-    Select,
     Switch,
     Typography,
     withStyles,
@@ -69,14 +65,10 @@ const styles = theme => ({
     generalConfigPanel: {
         width: '100%',
     },
+    securityHeading: {
+        fontWeight: 600,
+    },
 });
-
-const endpointTypes = [
-    { key: 'http', value: 'HTTP/REST Endpoint' },
-    { key: 'address', value: 'HTTP/SOAP Endpoint' },
-    { key: 'default', value: 'Dynamic Endpoints' },
-    { key: 'awslambda', value: 'AWS Lambda Endpoint' },
-];
 
 /**
  * The component which holds the general configurations of the endpoints.
@@ -91,15 +83,14 @@ function GeneralConfiguration(props) {
         endpointSecurityInfo,
         handleToggleEndpointSecurity,
         handleEndpointSecurityChange,
-        handleEndpointTypeSelect,
         endpointType,
         classes,
         apiType,
     } = props;
-    const [isConfigExpanded, setConfigExpand] = useState(true);
+    const [isConfigExpanded, setConfigExpand] = useState(false);
     const [endpointCertificates, setEndpointCertificates] = useState([]);
-    const [epTypeSubHeading, setEpTypeSubHeading] = useState('Single HTTP/ REST');
     const { api } = useContext(APIContext);
+    const [aliasList, setAliasList] = useState([]);
 
     /**
      * Method to upload the certificate content by calling the rest api.
@@ -127,46 +118,15 @@ function GeneralConfiguration(props) {
                         id: 'Apis.Details.Endpoints.GeneralConfiguration.Certificates.certificate.alias.exist',
                         defaultMessage: 'Adding Certificate Failed. Certificate alias exists.',
                     }));
+                } else if (err.response) {
+                    Alert.error(err.response.body.description);
+                } else {
+                    Alert.error(intl.formatMessage({
+                        id: 'Apis.Details.Endpoints.GeneralConfiguration.Certificates.certificate.error',
+                        defaultMessage: 'Something went wrong while adding the certificate.',
+                    }));
                 }
             });
-    };
-
-    /**
-     * Method to get the endpoint type heading.
-     * Ex: Load Balance REST/ HTTP, Fail Over SOAP/ HTTP
-     *
-     * @return {string} The endpoint type string.
-     * */
-    const getEndpointTypeSubHeading = () => {
-        let type = '';
-        const epType = epConfig.endpoint_type;
-        const endpointTypeKey = endpointType.key;
-
-        if (endpointTypeKey === 'default') {
-            return 'Dynamic Endpoints';
-        }
-
-        if (endpointTypeKey === 'awslambda') {
-            return 'AWS Lambda Endpoint';
-        }
-
-        switch (epType) {
-            case 'load_balance':
-                type = 'Load Balance';
-                break;
-            case 'failover':
-                type = 'Fail Over';
-                break;
-            default:
-                type = 'Single';
-                break;
-        }
-        if (endpointTypeKey === 'address') {
-            type = type.concat(' HTTP/ SOAP');
-        } else {
-            type = type.concat(' HTTP/ REST');
-        }
-        return type;
     };
 
     /**
@@ -200,18 +160,15 @@ function GeneralConfiguration(props) {
             });
     };
 
-    useEffect(() => {
-        const heading = getEndpointTypeSubHeading();
-        setEpTypeSubHeading(heading);
-    }, [props]);
-
     // Get the certificates from backend.
     useEffect(() => {
         API.getEndpointCertificates()
             .then((resp) => {
                 const { certificates } = resp.obj;
                 const endpoints = endpointsToList(epConfig);
+                const aliases = [];
                 const filteredCertificates = certificates.filter((cert) => {
+                    aliases.push(cert.alias);
                     for (const endpoint of endpoints) {
                         if (endpoint && endpoint.url.indexOf(cert.endpoint) !== -1) {
                             return true;
@@ -220,6 +177,7 @@ function GeneralConfiguration(props) {
                     return false;
                 });
                 setEndpointCertificates(filteredCertificates);
+                setAliasList(aliases);
             })
             .catch((err) => {
                 console.error(err);
@@ -240,24 +198,6 @@ function GeneralConfiguration(props) {
                     id='panel1bh-header'
                     className={classes.configHeaderContainer}
                 >
-                    <Typography className={classes.heading}>
-                        <FormattedMessage
-                            id='Apis.Details.Endpoints.GeneralConfiguration.general.configuration.heading'
-                            defaultMessage='General Configuration'
-                        />
-                    </Typography>
-                    {apiType !== 'HTTP' ? (
-                        <div />
-                    ) : (
-                        <Typography className={classes.secondaryHeading}>
-                            <FormattedMessage
-                                id='Apis.Details.Endpoints.GeneralConfiguration.endpoint.type.sub.heading'
-                                defaultMessage='Endpoint Type'
-                            />{' '}
-                            : {epTypeSubHeading}
-                            {' | '}
-                        </Typography>
-                    )}
                     {apiType !== 'HTTP' || endpointType.key === 'awslambda' ? (
                         <div />
                     ) : (
@@ -272,7 +212,6 @@ function GeneralConfiguration(props) {
                                 defaultMessage='Endpoint Security'
                             />
                             : {endpointSecurityInfo !== null ? endpointSecurityInfo.type : 'NONE'}
-                            {' | '}
                         </Typography>
                     )}
                     {apiType !== 'HTTP' || endpointType.key === 'default' || endpointType.key === 'awslambda' ? (
@@ -284,6 +223,7 @@ function GeneralConfiguration(props) {
                                 apiType !== 'HTTP' || endpointType.key === 'default' || endpointType.key === 'awslambda'
                             }
                         >
+                            {' | '}
                             <FormattedMessage
                                 id='Apis.Details.Endpoints.GeneralConfiguration.certificates.sub.heading'
                                 defaultMessage='Certificates'
@@ -297,30 +237,7 @@ function GeneralConfiguration(props) {
                         {apiType !== 'HTTP' ? (
                             <div />
                         ) : (
-                            <Grid container item xs={8}>
-                                <Grid item xs className={classes.endpointConfigSection}>
-                                    <FormControl className={classes.endpointTypeSelect}>
-                                        <InputLabel htmlFor='endpoint-type-select'>
-                                            <FormattedMessage
-                                                id='Apis.Details.Endpoints.EndpointOverview.endpointType'
-                                                defaultMessage='Endpoint Type'
-                                            />
-                                        </InputLabel>
-                                        <Select
-                                            disabled={isRestricted(['apim:api_create'], api)}
-                                            value={endpointType.key}
-                                            onChange={handleEndpointTypeSelect}
-                                            inputProps={{
-                                                name: 'key',
-                                                id: 'endpoint-type-select',
-                                            }}
-                                        >
-                                            {endpointTypes.map((type) => {
-                                                return <MenuItem value={type.key}>{type.value}</MenuItem>;
-                                            })}
-                                        </Select>
-                                    </FormControl>
-                                </Grid>
+                            <Grid container item xs={6}>
                                 {apiType !== 'HTTP' ? (
                                     <div />
                                 ) : (
@@ -340,13 +257,15 @@ function GeneralConfiguration(props) {
                                                 />
                                             }
                                             label={
-                                                <FormattedMessage
-                                                    id={
-                                                        'Apis.Details.Endpoints.EndpointOverview.' +
-                                                        'endpoint.security.enable.switch'
-                                                    }
-                                                    defaultMessage='Endpoint Security'
-                                                />
+                                                <Typography className={classes.securityHeading}>
+                                                    <FormattedMessage
+                                                        id={
+                                                            'Apis.Details.Endpoints.EndpointOverview.' +
+                                                            'endpoint.security.enable.switch'
+                                                        }
+                                                        defaultMessage='Endpoint Security'
+                                                    />
+                                                </Typography>
                                             }
                                             labelPlacement='start'
                                             onChange={handleToggleEndpointSecurity}
@@ -363,7 +282,7 @@ function GeneralConfiguration(props) {
                         )}
                         <Grid
                             item
-                            xs
+                            xs={6}
                             className={classes.endpointConfigSection}
                             hidden={endpointType.key === 'default' || endpointType.key === 'awslambda'}
                         >
@@ -372,6 +291,7 @@ function GeneralConfiguration(props) {
                                 certificates={endpointCertificates}
                                 uploadCertificate={saveCertificate}
                                 deleteCertificate={deleteCertificate}
+                                aliasList={aliasList}
                             />
                         </Grid>
                     </Grid>
@@ -386,7 +306,6 @@ GeneralConfiguration.propTypes = {
     endpointSecurityInfo: PropTypes.shape({}).isRequired,
     handleToggleEndpointSecurity: PropTypes.func.isRequired,
     handleEndpointSecurityChange: PropTypes.func.isRequired,
-    handleEndpointTypeSelect: PropTypes.func.isRequired,
     endpointType: PropTypes.shape({}).isRequired,
     classes: PropTypes.shape({}).isRequired,
     intl: PropTypes.shape({}).isRequired,

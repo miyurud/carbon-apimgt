@@ -117,10 +117,10 @@ class AuthManager {
                 let username;
                 if (data.active) {
                     const currentEnv = Utils.getCurrentEnvironment();
-                    if (data.username.includes("@carbon.super")) {
+                    if (data.username.endsWith('@carbon.super')) {
                         username = data.username.replace('@carbon.super', '');
                     } else {
-                        username = data.username;
+                        ({ username } = data);
                     }
                     user = new User(currentEnv.label, username);
                     const scopes = data.scope.split(' ');
@@ -133,6 +133,7 @@ class AuthManager {
                     }
                 } else {
                     console.warn('User with ' + partialToken + ' is not active!');
+                    throw new Error(CONSTS.errorCodes.INVALID_TOKEN);
                 }
                 return user;
             });
@@ -208,7 +209,7 @@ class AuthManager {
             password,
             grant_type: 'password',
             validity_period: 3600,
-            scopes: 'apim:subscribe apim:signup apim:workflow_approve',
+            scopes: 'apim:subscribe apim:signup apim:workflow_approve apim:sub_alert_manage',
         };
         const promised_response = axios(Utils.getLoginTokenPath(environment), {
             method: 'POST',

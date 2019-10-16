@@ -38,11 +38,6 @@ const useStyles = makeStyles(theme => ({
         alignItems: 'left',
         justifyContent: 'center',
     },
-    headingBox: {
-        display: 'grid',
-        lineHeight: '38px',
-        justifyContent: 'center',
-    },
     iconTrue: {
         color: green[500],
         marginRight: theme.spacing(1),
@@ -76,15 +71,16 @@ const useStyles = makeStyles(theme => ({
 export default function CheckboxLabels(props) {
     const classes = useStyles();
     const { api } = props;
-    const isEndpointAvailable = api.endpointConfig !== null;
+    const isEndpointAvailable = api.endpointConfig !== null && !api.endpointConfig.implementation_status;
     const isTierAvailable = api.policies.length !== 0;
     const isPrototypedAvailable =
-        api.endpointConfig !== null && api.endpointConfig.implementation_status === 'prototyped';
+        (api.endpointConfig !== null && api.endpointConfig.implementation_status === 'prototyped')
+        || api.endpointImplementationType === 'INLINE';
 
     return (
         <Paper className={classes.paperCenter}>
-            <Grid xs={12} className={classes.headingBox}>
-                <Typography variant='h5' style={{ fontWeight: 600 }}>
+            <Grid xs={12}>
+                <Typography variant='h6'>
                     <FormattedMessage
                         id='Apis.Details.Configuration.Configuration.requirements'
                         defaultMessage='Requirements'
@@ -100,7 +96,7 @@ export default function CheckboxLabels(props) {
             {(api.lifeCycleStatus === 'CREATED' || api.lifeCycleStatus === 'PROTOTYPED') && (
                 <React.Fragment>
                     <Grid xs={12} className={classes.labelsGrid}>
-                        <Typography variant='h10' >
+                        <Typography variant='subtitle2'>
                             <FormattedMessage
                                 id='Apis.Details.Configuration.Configuration.publisher'
                                 defaultMessage='Publish'
@@ -114,9 +110,14 @@ export default function CheckboxLabels(props) {
                             ) : (
                                 <CloseIcon className={classes.iconFalse} />
                             )}
-                            <Typography variant='h10'>Endpoint provided</Typography>
+                            <Typography>
+                                <FormattedMessage
+                                    id='Apis.Details.LifeCycle.CheckboxLabels.endpoints.provided'
+                                    defaultMessage='Endpoint provided'
+                                />
+                            </Typography>
                             <Link to={'/apis/' + api.id + '/endpoints'}>
-                                <LaunchIcon style={{ marginLeft: '2px' }} fontSize='small' />
+                                <LaunchIcon style={{ marginLeft: '2px' }} color='primary' fontSize='small' />
                             </Link>
                         </Grid>
                         <Grid xs={12} className={classes.grid}>
@@ -125,14 +126,19 @@ export default function CheckboxLabels(props) {
                             ) : (
                                 <CloseIcon className={classes.iconFalse} />
                             )}
-                            <Typography variant='h10'>Tiers selected</Typography>
+                            <Typography>
+                                <FormattedMessage
+                                    id='Apis.Details.LifeCycle.CheckboxLabels.business.plans.selected'
+                                    defaultMessage='Business Plan(s) selected'
+                                />
+                            </Typography>
                             <Link to={'/apis/' + api.id + '/subscriptions'}>
-                                <LaunchIcon style={{ marginLeft: '2px' }} fontSize='small' />
+                                <LaunchIcon style={{ marginLeft: '2px' }} color='primary' fontSize='small' />
                             </Link>
                         </Grid>
                     </Grid>
                     <Grid xs={12} className={classes.labelsGrid}>
-                        <Typography variant='h10' >
+                        <Typography variant='subtitle2'>
                             <FormattedMessage
                                 id='Apis.Details.Configuration.Configuration.prototype'
                                 defaultMessage='Deploy as a Prototype'
@@ -146,9 +152,14 @@ export default function CheckboxLabels(props) {
                             ) : (
                                 <CloseIcon className={classes.iconFalse} />
                             )}
-                            <Typography variant='h10'>Prototype Endpoint provided</Typography>
+                            <Typography>
+                                <FormattedMessage
+                                    id='Apis.Details.Configuration.Configuration.prototype.endpoints.provided'
+                                    defaultMessage='Prototype Endpoint provided'
+                                />
+                            </Typography>
                             <Link to={'/apis/' + api.id + '/endpoints'}>
-                                <LaunchIcon style={{ marginLeft: '2px' }} fontSize='small' />
+                                <LaunchIcon style={{ marginLeft: '2px' }} color='primary' fontSize='small' />
                             </Link>
                         </Grid>
                     </Grid>
@@ -157,7 +168,7 @@ export default function CheckboxLabels(props) {
             {api.lifeCycleStatus === 'PUBLISHED' && (
                 <React.Fragment>
                     <Grid xs={12} className={classes.labelsGrid}>
-                        <Typography variant='h10' >
+                        <Typography variant='subtitle2' >
                             <FormattedMessage
                                 id='Apis.Details.Configuration.Configuration.prototype'
                                 defaultMessage='Deploy as a Prototype'
@@ -171,9 +182,14 @@ export default function CheckboxLabels(props) {
                             ) : (
                                 <CloseIcon className={classes.iconFalse} />
                             )}
-                            <Typography variant='h10'>Prototype Endpoint provided</Typography>
+                            <Typography>
+                                <FormattedMessage
+                                    id='Apis.Details.Configuration.Configuration.prototype.endpoints.provided'
+                                    defaultMessage='Prototype Endpoint provided'
+                                />
+                            </Typography>
                             <Link to={'/apis/' + api.id + '/endpoints'}>
-                                <LaunchIcon style={{ marginLeft: '2px' }} fontSize='small' />
+                                <LaunchIcon style={{ marginLeft: '2px' }} color='primary' fontSize='small' />
                             </Link>
                         </Grid>
                     </Grid>

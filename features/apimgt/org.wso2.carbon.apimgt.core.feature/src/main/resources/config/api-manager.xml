@@ -314,7 +314,7 @@
         <!--This property is used to indicate how we do user name comparision for token generation https://wso2.org/jira/browse/APIMANAGER-2225-->
         <CompareCaseInsensitively>true</CompareCaseInsensitively>
         <DisplayURL>false</DisplayURL>
-        <URL>https://localhost:${mgt.transport.https.port}/store</URL>
+        <URL>https://localhost:${mgt.transport.https.port}/devportal</URL>
 
         <!-- Server URL of the API Store. -->
         <ServerURL>https://localhost:${mgt.transport.https.port}${carbon.context}services/</ServerURL>
@@ -340,6 +340,9 @@
         <!-- This parameter specifies whether to display the ratings  or not.
              Default is "true". If user wants to disable, he must set this param as "false" -->
         <DisplayRatings>true</DisplayRatings>
+
+        <!-- This parameter specifies the  alias value of the Api Key which will be used for Api Key Authentication  -->
+        <ApiKeyAlias>gateway_certificate_alias</ApiKeyAlias>
 
         <!--set isStoreForumEnabled to false for disable forum in store-->
         <!--isStoreForumEnabled>false</isStoreForumEnabled-->

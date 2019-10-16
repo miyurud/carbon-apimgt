@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 
 import MenuButton from 'AppComponents/Shared/MenuButton';
 import { FormattedMessage } from 'react-intl';
+import AuthManager from 'AppData/AuthManager';
 
 const useStyles = makeStyles(theme => ({
     links: {
@@ -20,7 +21,7 @@ const APICreateMenu = (props) => {
     const createTypes = (
         <List>
             <ListItem>
-                <Link to='/apis/create/rest' className={classes.links}>
+                <Link id='itest-id-createdefault' to='/apis/create/rest' className={classes.links}>
                     <ListItemText
                         primary={
                             <FormattedMessage
@@ -115,7 +116,7 @@ const APICreateMenu = (props) => {
             </ListItem>
         </List>
     );
-    return <MenuButton {...props} menuList={createTypes} />;
+    return !AuthManager.isNotCreator() && <MenuButton {...props} menuList={createTypes} />;
 };
 
 APICreateMenu.propTypes = {

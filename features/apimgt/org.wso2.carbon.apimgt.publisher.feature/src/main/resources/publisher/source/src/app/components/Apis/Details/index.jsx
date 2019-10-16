@@ -42,7 +42,6 @@ import Utils from 'AppData/Utils';
 import ResourceNotFound from 'AppComponents/Base/Errors/ResourceNotFound';
 import CustomIcon from 'AppComponents/Shared/CustomIcon';
 import LeftMenuItem from 'AppComponents/Shared/LeftMenuItem';
-import { PageNotFound } from 'AppComponents/Base/Errors';
 import API from 'AppData/api';
 import APIProduct from 'AppData/APIProduct';
 import { Progress } from 'AppComponents/Shared';
@@ -66,7 +65,6 @@ import Scope from './Scopes';
 import Security from './Security';
 import APIDefinition from './APIDefinition/APIDefinition';
 import APIDetailsTopMenu from './components/APIDetailsTopMenu';
-import MediationPoliciesOverview from './MediationPolicies/Overview';
 import BusinessInformation from './BusinessInformation/BusinessInformation';
 import Properties from './Properties/Properties';
 import Monetization from './Monetization';
@@ -159,12 +157,13 @@ class Details extends Component {
             apiNotFound: false,
             // updateAPI: this.updateAPI,
             isAPIProduct,
+            imageUpdate: 0,
         };
         this.setAPI = this.setAPI.bind(this);
         this.setAPIProduct = this.setAPIProduct.bind(this);
         this.updateAPI = this.updateAPI.bind(this);
+        this.setImageUpdate = this.setImageUpdate.bind(this);
     }
-
     /**
      * @inheritDoc
      * @memberof Details
@@ -204,7 +203,16 @@ class Details extends Component {
             this.setAPI();
         }
     }
-
+    /**
+     *
+     * This method is a hack to update the image in the toolbar when a new image is uploaded
+     * @memberof Details
+     */
+    setImageUpdate() {
+        this.setState(previousState => ({
+            imageUpdate: previousState.imageUpdate + 1,
+        }));
+    }
     /**
      *
      *
@@ -274,6 +282,7 @@ class Details extends Component {
                                 id: 'Apis.Details.index.schema.definition',
                                 defaultMessage: 'Schema Definition',
                             })}
+                            route='schema definition'
                             to={pathPrefix + 'schema definition'}
                             Icon={<CodeIcon />}
                         />
@@ -289,6 +298,7 @@ class Details extends Component {
                                 id: 'Apis.Details.index.api.definition2',
                                 defaultMessage: 'API definition',
                             })}
+                            route='api definition'
                             to={pathPrefix + 'api definition'}
                             Icon={<CodeIcon />}
                         />
@@ -395,11 +405,9 @@ class Details extends Component {
      * @returns {Component} Render API Details page
      */
     render() {
-        const { api, apiNotFound, isAPIProduct } = this.state;
-        let isWebsocket = false;
-        if (api) {
-            isWebsocket = (api.type === 'WS');
-        }
+        const {
+            api, apiNotFound, isAPIProduct, imageUpdate,
+        } = this.state;
         const {
             classes,
             theme,
@@ -413,7 +421,7 @@ class Details extends Component {
 
         // pageLocation renaming is to prevent es-lint errors saying can't use global name location
         if (!Details.isValidURL(pathname)) {
-            return <PageNotFound location={pageLocation} />;
+            return <ResourceNotFound location={pageLocation} />;
         }
         const uuid = match.params.apiUUID || match.params.api_uuid || match.params.apiProdUUID;
         const pathPrefix = '/' + (isAPIProduct ? 'api-products' : 'apis') + '/' + uuid + '/';
@@ -427,7 +435,7 @@ class Details extends Component {
                 },
                 bodyMessage: {
                     id: 'Apis.Details.index.api.not.found.body',
-                    defaultMessage: "Can't find the API with the id {uuid}",
+                    defaultMessage: "Can't find the API with the given id",
                 },
             });
             const resourceNotFountMessage = {
@@ -452,6 +460,7 @@ class Details extends Component {
                         updateAPI: this.updateAPI,
                         isAPIProduct,
                         setAPI: this.setAPI,
+                        setImageUpdate: this.setImageUpdate,
                     }}
                 >
                     <div className={classes.LeftMenu}>
@@ -480,15 +489,17 @@ class Details extends Component {
                             to={pathPrefix + 'configuration'}
                             Icon={<ConfigurationIcon />}
                         />
-                        <LeftMenuItem
-                            text={intl.formatMessage({
-                                id: 'Apis.Details.index.runtime.configs',
-                                defaultMessage: 'Runtime Configurations',
-                            })}
-                            route='runtime-configuration'
-                            to={pathPrefix + 'runtime-configuration'}
-                            Icon={<RuntimeConfigurationIcon />}
-                        />
+                        {!api.isWebSocket() && (
+                            <LeftMenuItem
+                                text={intl.formatMessage({
+                                    id: 'Apis.Details.index.runtime.configs',
+                                    defaultMessage: 'Runtime Configurations',
+                                })}
+                                route='runtime-configuration'
+                                to={pathPrefix + 'runtime-configuration'}
+                                Icon={<RuntimeConfigurationIcon />}
+                            />
+                        )}
                         {this.getLeftMenuItemForResourcesByType(api.type)}
                         {!isAPIProduct && (
                             <LeftMenuItem
@@ -530,7 +541,7 @@ class Details extends Component {
                                 Icon={<PersonPinCircleOutlinedIcon />}
                             />
                         )}
-                        {!isWebsocket && !isAPIProduct && (
+                        {!api.isWebSocket() && !isAPIProduct && (
                             <LeftMenuItem
                                 text={intl.formatMessage({
                                     id: 'Apis.Details.index.left.menu.scope',
@@ -564,7 +575,7 @@ class Details extends Component {
                             to={pathPrefix + 'documents'}
                             Icon={<DocumentsIcon />}
                         />
-                        {!isAPIProduct && !isWebsocket && !isRestricted(['apim:api_publish'], api) && (
+                        {!isAPIProduct && !api.isWebSocket() && !isRestricted(['apim:api_publish'], api) && (
                             <LeftMenuItem
                                 text={intl.formatMessage({
                                     id: 'Apis.Details.index.monetization',
@@ -572,16 +583,6 @@ class Details extends Component {
                                 })}
                                 to={pathPrefix + 'monetization'}
                                 Icon={<MonetizationIcon />}
-                            />
-                        )}
-                        {!isAPIProduct && !isWebsocket && (
-                            <LeftMenuItem
-                                text={intl.formatMessage({
-                                    id: 'Apis.Details.index.left.menu.mediation.policies',
-                                    defaultMessage: 'mediation policies',
-                                })}
-                                to={pathPrefix + 'mediation policies'}
-                                Icon={<ScopesIcon />}
                             />
                         )}
                         {settingsContext.externalStoresEnabled && (
@@ -596,7 +597,7 @@ class Details extends Component {
                         )}
                     </div>
                     <div className={classes.content}>
-                        <APIDetailsTopMenu api={api} isAPIProduct={isAPIProduct} />
+                        <APIDetailsTopMenu api={api} isAPIProduct={isAPIProduct} imageUpdate={imageUpdate} />
                         <div className={classes.contentInside}>
                             <Switch>
                                 <Redirect exact from={Details.subPaths.BASE} to={redirectUrl} />
@@ -642,10 +643,7 @@ class Details extends Component {
                                 />
                                 <Route
                                     path={Details.subPaths.OPERATIONS}
-                                    component={() => (<Operations
-                                        api={api}
-                                        updateAPI={this.updateAPI}
-                                    />)}
+                                    component={() => <Operations api={api} updateAPI={this.updateAPI} />}
                                 />
                                 <Route
                                     exact
@@ -664,7 +662,6 @@ class Details extends Component {
                                 />
 
                                 <Route path={Details.subPaths.SCOPES} component={() => <Scope api={api} />} />
-                                <Route path={Details.subPaths.SCOPES_PRODUCT} component={() => <Scope api={api} />} />
                                 <Route path={Details.subPaths.DOCUMENTS} component={() => <Documents api={api} />} />
                                 <Route
                                     path={Details.subPaths.DOCUMENTS_PRODUCT}
@@ -700,14 +697,6 @@ class Details extends Component {
                                     component={() => <Monetization api={api} />}
                                 />
                                 <Route path={Details.subPaths.EXTERNAL_STORES} component={ExternalStores} />
-                                <Route
-                                    path={Details.subPaths.MEDIATION_POLICIES}
-                                    component={MediationPoliciesOverview}
-                                />
-                                <Route
-                                    path={Details.subPaths.MEDIATION_POLICIES_PRODUCT}
-                                    component={MediationPoliciesOverview}
-                                />
                             </Switch>
                         </div>
                     </div>
@@ -741,8 +730,6 @@ Details.subPaths = {
     RESOURCES_PRODUCT: '/api-products/:apiprod_uuid/resources',
     RESOURCES_PRODUCT_EDIT: '/api-products/:apiprod_uuid/resources/edit',
     SCOPES: '/apis/:api_uuid/scopes',
-    SCOPES_PRODUCT: '/api-products/:apiprod_uuid/scopes',
-    MEDIATION_POLICIES_PRODUCT: '/api-products/:apiprod_uuid/mediation policies',
     DOCUMENTS: '/apis/:api_uuid/documents',
     DOCUMENTS_PRODUCT: '/api-products/:apiprod_uuid/documents',
     SUBSCRIPTIONS_PRODUCT: '/api-products/:apiprod_uuid/subscriptions',
@@ -755,7 +742,6 @@ Details.subPaths = {
     PROPERTIES_PRODUCT: '/api-products/:apiprod_uuid/properties',
     NEW_VERSION: '/apis/:api_uuid/new_version',
     MONETIZATION: '/apis/:api_uuid/monetization',
-    MEDIATION_POLICIES: '/apis/:api_uuid/mediation policies',
     EXTERNAL_STORES: '/apis/:api_uuid/external-stores',
 };
 
