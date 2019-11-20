@@ -19,14 +19,19 @@ import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import TextField from '@material-ui/core/TextField';
 import Grid from '@material-ui/core/Grid';
+import { InputAdornment, IconButton, Icon } from '@material-ui/core';
+import CircularProgress from '@material-ui/core/CircularProgress';
+import Chip from '@material-ui/core/Chip';
 import Typography from '@material-ui/core/Typography';
 import { makeStyles } from '@material-ui/core/styles';
 import { FormattedMessage } from 'react-intl';
+import green from '@material-ui/core/colors/green';
 import APIValidation from 'AppData/APIValidation';
+import API from 'AppData/api';
 
 import SelectPolicies from './SelectPolicies';
 
-const useStyles = makeStyles(theme => ({
+const useStyles = makeStyles((theme) => ({
     mandatoryStar: {
         color: theme.palette.error.main,
         marginLeft: theme.spacing(0.1),
@@ -39,6 +44,25 @@ const useStyles = makeStyles(theme => ({
             whiteSpace: 'nowrap',
             overflow: 'hidden',
         },
+    },
+    endpointValidChip: {
+        color: 'green',
+        border: '1px solid green',
+    },
+    endpointInvalidChip: {
+        color: '#ffd53a',
+        border: '1px solid #ffd53a',
+    },
+    endpointErrorChip: {
+        color: 'red',
+        border: '1px solid red',
+    },
+    iconButton: {
+        padding: theme.spacing(1),
+    },
+    iconButtonValid: {
+        padding: theme.spacing(1),
+        color: green[500],
     },
 }));
 
@@ -68,6 +92,21 @@ function actualContext({ context, version }) {
 }
 
 /**
+ * This method used to  compare the context values
+ * @param {*} value  input value
+ * @param {*} result resulted value
+ * @returns {Boolean} true or false
+ */
+function checkContext(value, result) {
+    const contextVal = value.includes('/') ? value.toLowerCase() : '/' + value.toLowerCase();
+    if (contextVal === '/' + result.toLowerCase().slice(result.toLowerCase().lastIndexOf('/') + 1)
+     || contextVal === result.toLowerCase()) {
+        return true;
+    }
+    return false;
+}
+
+/**
  * Improved API create default form
  *
  * @export
@@ -76,31 +115,37 @@ function actualContext({ context, version }) {
  */
 export default function DefaultAPIForm(props) {
     const {
-        onChange, onValidate, api, isAPIProduct,
+        onChange, onValidate, api, isAPIProduct, isWebSocket,
     } = props;
     const classes = useStyles();
     const [validity, setValidity] = useState({});
+    const [isEndpointValid, setIsEndpointValid] = useState();
+    const [statusCode, setStatusCode] = useState('');
+    const [isUpdating, setUpdating] = useState(false);
+    const [isErrorCode, setIsErrorCode] = useState(false);
+    const iff = (condition, then, otherwise) => (condition ? then : otherwise);
 
     // Check the provided API validity on mount, TODO: Better to use Joi schema here ~tmkb
     useEffect(() => {
-        onValidate(Boolean(api.name) && (isAPIProduct || Boolean(api.version)) && Boolean(api.context)
-         && Boolean(api.policies));
+        onValidate(Boolean(api.name)
+                && (isAPIProduct || Boolean(api.version))
+                && Boolean(api.context)
+                && Boolean(api.policies));
     }, []);
 
     const updateValidity = (newState) => {
-        let isFormValid =
-            Object.entries(newState).length > 0 &&
-            Object.entries(newState)
-                .map(([key, value]) =>
-                    value === null ||
-                        value === undefined ||
-                        (isAPIProduct && ['version', 'endpoints'].includes(key)))
+        let isFormValid = Object.entries(newState).length > 0
+            && Object.entries(newState)
+                .map(([, value]) => value === null || value === undefined)
                 .reduce((acc, cVal) => acc && cVal); // Aggregate the individual validation states
-        // API Name , Version & Context is a must that's why `&&` chain
+        // TODO: refactor following redundant validation.
+        // The valid state should available in the above reduced state ~tmkb
         // if isAPIProduct gets true version validation has been skipped
-        isFormValid =
-            isFormValid && Boolean(api.name) && (isAPIProduct || Boolean(api.version)) && Boolean(api.context)
-            && (!isAPIProduct || (Boolean(api.policies) && api.policies.length > 0));
+        isFormValid = isFormValid
+            && Boolean(api.name)
+            && (isAPIProduct || Boolean(api.version))
+            && Boolean(api.context)
+            && (!isAPIProduct || newState.policy === null);
         onValidate(isFormValid, validity);
         setValidity(newState);
     };
@@ -116,7 +161,8 @@ export default function DefaultAPIForm(props) {
                 const nameValidity = APIValidation.apiName.required().validate(value, { abortEarly: false }).error;
                 if (nameValidity === null) {
                     APIValidation.apiParameter.validate(field + ':' + value).then((result) => {
-                        if (result.body.list.length > 0) {
+                        if (result.body.list.length > 0 && value.toLowerCase() === result.body.list[0]
+                            .name.toLowerCase()) {
                             updateValidity({
                                 ...validity,
                                 name: { details: [{ message: 'Name ' + value + ' already exists' }] },
@@ -131,16 +177,15 @@ export default function DefaultAPIForm(props) {
                 break;
             }
             case 'context': {
-                const contextValidity = APIValidation.apiContext.required()
-                    .validate(value, { abortEarly: false }).error;
+                const contextValidity = APIValidation.apiContext.required().validate(value, { abortEarly: false })
+                    .error;
+                const apiContext = value.includes('/') ? value : '/' + value;
                 if (contextValidity === null) {
-                    const apiContext = value.includes('/') ? value + '/' + (isAPIProduct ? '1.0.0' : api.version)
-                        : '/' + value + '/' + (isAPIProduct ? '1.0.0' : api.version);
                     APIValidation.apiParameter.validate(field + ':' + apiContext).then((result) => {
-                        if (result.body.list.length > 0) {
+                        if (result.body.list.length > 0 && checkContext(value, result.body.list[0].context)) {
                             updateValidity({
                                 ...validity,
-                                context: { details: [{ message: apiContext + ' context with version exists' }] },
+                                context: { details: [{ message: apiContext + ' context already exists' }] },
                             });
                         } else {
                             updateValidity({ ...validity, context: contextValidity, version: null });
@@ -154,17 +199,21 @@ export default function DefaultAPIForm(props) {
             case 'version': {
                 const versionValidity = APIValidation.apiVersion.required().validate(value).error;
                 if (versionValidity === null) {
-                    const apiVersion = api.context.includes('/')
-                        ? api.context + '/' + value
-                        : '/' + api.context + '/' + value;
-                    APIValidation.apiParameter.validate('context:' + apiVersion).then((result) => {
-                        if (result.body.list.length > 0) {
+                    const apiVersion = api.context.includes('/') ? api.context + '/' + value : '/'
+                    + api.context + '/' + value;
+                    APIValidation.apiParameter.validate('context:' + api.context
+                    + ' version:' + value).then((result) => {
+                        // version of APIProduct equals to 1.0.0
+                        if (result.body.list.length > 0 && (
+                            (result.body.list[0].version !== undefined
+                            && (result.body.list[0].version.toLowerCase()
+                                === value.toLowerCase())) || value === '1.0.0')) {
                             updateValidity({
                                 ...validity,
                                 version: { message: apiVersion + ' context with version already exists' },
                             });
                         } else {
-                            updateValidity({ ...validity, version: versionValidity, context: null });
+                            updateValidity({ ...validity, version: versionValidity });
                         }
                     });
                 } else {
@@ -174,13 +223,42 @@ export default function DefaultAPIForm(props) {
             }
             case 'policies': {
                 const policyValidity = value && value.length > 0;
-                updateValidity({ ...validity, version: policyValidity });
+                updateValidity({
+                    ...validity,
+                    policy:
+                        policyValidity || !isAPIProduct
+                            ? null
+                            : { message: 'Need to select at least one policy to create an API Product' },
+                });
                 break;
             }
             default: {
                 break;
             }
         }
+    }
+
+    function testEndpoint(endpoint) {
+        setUpdating(true);
+        const restApi = new API();
+        restApi.testEndpoint(endpoint)
+            .then((result) => {
+                if (result.body.error !== null) {
+                    setStatusCode(result.body.error);
+                    setIsErrorCode(true);
+                } else {
+                    setStatusCode(result.body.statusCode + ' ' + result.body.statusMessage);
+                    setIsErrorCode(false);
+                }
+                if (result.body.statusCode >= 200 && result.body.statusCode < 300) {
+                    setIsEndpointValid(true);
+                    setIsErrorCode(false);
+                } else {
+                    setIsEndpointValid(false);
+                }
+            }).finally(() => {
+                setUpdating(false);
+            });
     }
 
     return (
@@ -191,19 +269,17 @@ export default function DefaultAPIForm(props) {
                     fullWidth
                     id='outlined-name'
                     error={validity.name}
-                    label={
-                        <React.Fragment>
+                    label={(
+                        <>
                             <FormattedMessage id='Apis.Create.Components.DefaultAPIForm.name' defaultMessage='Name' />
                             <sup className={classes.mandatoryStar}>*</sup>
-                        </React.Fragment>
-                    }
+                        </>
+                    )}
                     helperText={
-                        (validity.name && validity.name.details.map((detail, index) => {
-                            return (
-                                <div style={{ marginTop: index !== 0 && '10px' }}>
-                                    {detail.message}
-                                </div>);
-                        }))
+                        validity.name
+                        && validity.name.details.map((detail, index) => {
+                            return <div style={{ marginTop: index !== 0 && '10px' }}>{detail.message}</div>;
+                        })
                     }
                     value={api.name}
                     name='name'
@@ -219,21 +295,21 @@ export default function DefaultAPIForm(props) {
                 />
                 <Grid container spacing={2}>
                     {!isAPIProduct ? (
-                        <React.Fragment>
+                        <>
                             <Grid item md={8} xs={6}>
                                 <TextField
                                     fullWidth
                                     id='outlined-name'
                                     error={validity.context}
-                                    label={
-                                        <React.Fragment>
+                                    label={(
+                                        <>
                                             <FormattedMessage
                                                 id='Apis.Create.Components.DefaultAPIForm.api.context'
                                                 defaultMessage='Context'
                                             />
                                             <sup className={classes.mandatoryStar}>*</sup>
-                                        </React.Fragment>
-                                    }
+                                        </>
+                                    )}
                                     name='context'
                                     value={api.context}
                                     onChange={onChange}
@@ -244,12 +320,15 @@ export default function DefaultAPIForm(props) {
                                         },
                                     }}
                                     helperText={
-                                        (validity.context && validity.context.details.map((detail, index) => {
-                                            return (
-                                                <div style={{ marginTop: index !== 0 && '10px' }}>
-                                                    {detail.message}
-                                                </div>);
-                                        })) || `API will be exposed in ${actualContext(api)} context at the gateway`
+                                        (validity.context
+                                            && validity.context.details.map((detail, index) => {
+                                                return (
+                                                    <div style={{ marginTop: index !== 0 && '10px' }}>
+                                                        {detail.message}
+                                                    </div>
+                                                );
+                                            }))
+                                        || `API will be exposed in ${actualContext(api)} context at the gateway`
                                     }
                                     classes={{ root: classes.helperTextContext }}
                                     margin='normal'
@@ -260,15 +339,15 @@ export default function DefaultAPIForm(props) {
                                 <TextField
                                     fullWidth
                                     error={validity.version}
-                                    label={
-                                        <React.Fragment>
+                                    label={(
+                                        <>
                                             <FormattedMessage
                                                 id='Apis.Create.Components.DefaultAPIForm.version'
                                                 defaultMessage='Version'
                                             />
                                             <sup className={classes.mandatoryStar}>*</sup>
-                                        </React.Fragment>
-                                    }
+                                        </>
+                                    )}
                                     name='version'
                                     value={api.version}
                                     onChange={onChange}
@@ -283,23 +362,23 @@ export default function DefaultAPIForm(props) {
                                     variant='outlined'
                                 />
                             </Grid>
-                        </React.Fragment>
+                        </>
                     ) : (
-                        <React.Fragment>
+                        <>
                             <Grid item md={12}>
                                 <TextField
                                     fullWidth
                                     id='outlined-name'
                                     error={validity.context}
-                                    label={
-                                        <React.Fragment>
+                                    label={(
+                                        <>
                                             <FormattedMessage
                                                 id='Apis.Create.Components.DefaultAPIForm.api.product.context'
                                                 defaultMessage='Context'
                                             />
                                             <sup className={classes.mandatoryStar}>*</sup>
-                                        </React.Fragment>
-                                    }
+                                        </>
+                                    )}
                                     name='context'
                                     value={api.context}
                                     onChange={onChange}
@@ -309,19 +388,21 @@ export default function DefaultAPIForm(props) {
                                         },
                                     }}
                                     helperText={
-                                        (validity.context && validity.context.details.map((detail, index) => {
-                                            return (
-                                                <div style={{ marginTop: index !== 0 && '10px' }}>
-                                                    {detail.message}
-                                                </div>);
-                                        })) ||
-                                         `API Product will be exposed in ${actualContext(api)} context at the gateway`
+                                        (validity.context
+                                            && validity.context.details.map((detail, index) => {
+                                                return (
+                                                    <div style={{ marginTop: index !== 0 && '10px' }}>
+                                                        {detail.message}
+                                                    </div>
+                                                );
+                                            }))
+                                        || `API Product will be exposed in ${actualContext(api)} context at the gateway`
                                     }
                                     margin='normal'
                                     variant='outlined'
                                 />
                             </Grid>
-                        </React.Fragment>
+                        </>
                     )}
                 </Grid>
                 {!isAPIProduct && (
@@ -335,14 +416,15 @@ export default function DefaultAPIForm(props) {
                         helperText={
                             validity.endpointURL && (
                                 <span>
-                                    Enter a valid {''}
+                                    Enter a valid
                                     <a
                                         rel='noopener noreferrer'
                                         target='_blank'
                                         href='http://tools.ietf.org/html/rfc3986'
                                     >
                                         RFC 3986
-                                    </a>{' '}
+                                    </a>
+                                    {' '}
                                     URI
                                 </span>
                             )
@@ -350,6 +432,38 @@ export default function DefaultAPIForm(props) {
                         error={validity.endpointURL}
                         margin='normal'
                         variant='outlined'
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position='end'>
+                                    {statusCode && (
+                                        <Chip
+                                            label={statusCode}
+                                            className={isEndpointValid ? classes.endpointValidChip : iff(
+                                                isErrorCode,
+                                                classes.endpointErrorChip, classes.endpointInvalidChip,
+                                            )}
+                                            variant='outlined'
+                                        />
+                                    )}
+                                    {!isWebSocket && (
+                                        <IconButton
+                                            className={isEndpointValid ? classes.iconButtonValid : classes.iconButton}
+                                            aria-label='TestEndpoint'
+                                            onClick={() => testEndpoint(api.endpoint)}
+                                            disabled={isUpdating}
+                                        >
+                                            {isUpdating
+                                                ? <CircularProgress size={20} />
+                                                : (
+                                                    <Icon>
+                                                check_circle
+                                                    </Icon>
+                                                )}
+                                        </IconButton>
+                                    )}
+                                </InputAdornment>
+                            ),
+                        }}
                     />
                 )}
 
@@ -358,12 +472,15 @@ export default function DefaultAPIForm(props) {
                     isAPIProduct={isAPIProduct}
                     onChange={onChange}
                     validate={validate}
+                    isValid={validity.policies}
                 />
             </form>
             <Grid container direction='row' justify='flex-end' alignItems='center'>
                 <Grid item>
                     <Typography variant='caption' display='block' gutterBottom>
-                        <sup style={{ color: 'red' }}>*</sup> Mandatory fields
+                        <sup style={{ color: 'red' }}>*</sup>
+                        {' '}
+Mandatory fields
                     </Typography>
                 </Grid>
             </Grid>
@@ -374,10 +491,12 @@ export default function DefaultAPIForm(props) {
 DefaultAPIForm.defaultProps = {
     onValidate: () => {},
     api: {}, // Uncontrolled component
+    isWebSocket: false,
 };
 DefaultAPIForm.propTypes = {
     api: PropTypes.shape({}),
     isAPIProduct: PropTypes.shape({}).isRequired,
+    isWebSocket: PropTypes.shape({}),
     onChange: PropTypes.func.isRequired,
     onValidate: PropTypes.func,
 };

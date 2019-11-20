@@ -16,13 +16,11 @@
  * under the License.
  *
  */
-
+const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 const path = require('path');
 
 const config = {
-    entry: {
-        index: './source/index.jsx',
-    },
+    entry: { index: './source/index.jsx' },
     output: {
         path: path.resolve(__dirname, 'site/public/dist'),
         filename: '[name].bundle.js',
@@ -48,12 +46,8 @@ const config = {
         rules: [
             {
                 test: /\.(js|jsx)$/,
-                exclude: [/node_modules/, /coverage/],
-                use: [
-                    {
-                        loader: 'babel-loader',
-                    },
-                ],
+                exclude: [/node_modules\/(?!(@hapi)\/).*/, /coverage/],
+                loader: 'babel-loader',
             },
             {
                 test: /\.css$/,
@@ -82,10 +76,12 @@ const config = {
     externals: {
         Config: 'Configurations',
         MaterialIcons: 'MaterialIcons',
+        Settings: 'Settings',
     },
-    plugins: [],
+    plugins: [new MonacoWebpackPlugin({ languages: ['xml', 'json', 'yaml'], features: [] })],
 };
 
+// Note: for more info about monaco plugin: https://github.com/Microsoft/monaco-editor-webpack-plugin
 if (process.env.NODE_ENV === 'development') {
     config.watch = true;
 } else if (process.env.NODE_ENV === 'production') {

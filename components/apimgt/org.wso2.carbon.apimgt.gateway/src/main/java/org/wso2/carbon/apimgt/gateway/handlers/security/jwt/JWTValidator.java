@@ -26,6 +26,7 @@ import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.rest.RESTConstants;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.wso2.carbon.apimgt.gateway.APIMgtGatewayConstants;
 import org.wso2.carbon.apimgt.gateway.MethodStats;
 import org.wso2.carbon.apimgt.gateway.handlers.WebsocketUtil;
 import org.wso2.carbon.apimgt.gateway.handlers.security.APISecurityConstants;
@@ -115,6 +116,16 @@ public class JWTValidator {
                 throw new APISecurityException(APISecurityConstants.API_AUTH_INVALID_CREDENTIALS,
                         "Invalid JWT token");
             }
+        } else {
+            if (RevokedJWTDataHolder.isJWTTokenSignatureExistsInRevokedMap(tokenSignature)) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Token retrieved from the revoked jwt token map. Token: " + GatewayUtils.
+                            getMaskedToken(splitToken));
+                }
+                log.error("Invalid JWT token. " + GatewayUtils.getMaskedToken(splitToken));
+                throw new APISecurityException(APISecurityConstants.API_AUTH_INVALID_CREDENTIALS,
+                        "Invalid JWT token");
+            }
         }
 
         if (!isVerified) {
@@ -194,6 +205,14 @@ public class JWTValidator {
 
             JSONObject api = GatewayUtils.validateAPISubscription(apiContext, apiVersion, payload, splitToken, true);
 
+            /*
+             * Set api.ut.apiPublisher of the subscribed api to the message context.
+             * This is necessary for the functionality of Publisher alerts.
+             * */
+            if (api != null) {
+                synCtx.setProperty(APIMgtGatewayConstants.API_PUBLISHER, api.get("publisher"));
+            }
+
             log.debug("JWT authentication successful.");
             return GatewayUtils.generateAuthenticationContext(tokenSignature, payload, api, getApiLevelPolicy(), true);
         }
@@ -243,6 +262,16 @@ public class JWTValidator {
             }
             // Check revoked map.
             else if (RevokedJWTDataHolder.isJWTTokenSignatureExistsInRevokedMap(tokenSignature)) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Token retrieved from the revoked jwt token map. Token: " + GatewayUtils.
+                            getMaskedToken(splitToken));
+                }
+                log.error("Invalid JWT token. " + GatewayUtils.getMaskedToken(splitToken));
+                throw new APISecurityException(APISecurityConstants.API_AUTH_INVALID_CREDENTIALS,
+                        "Invalid JWT token");
+            }
+        } else {
+            if (RevokedJWTDataHolder.isJWTTokenSignatureExistsInRevokedMap(tokenSignature)) {
                 if (log.isDebugEnabled()) {
                     log.debug("Token retrieved from the revoked jwt token map. Token: " + GatewayUtils.
                             getMaskedToken(splitToken));

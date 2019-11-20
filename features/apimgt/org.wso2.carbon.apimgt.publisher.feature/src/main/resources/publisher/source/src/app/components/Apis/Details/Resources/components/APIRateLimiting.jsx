@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { useState, Fragment, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import Radio from '@material-ui/core/Radio';
 import Button from '@material-ui/core/Button';
@@ -33,6 +33,8 @@ import MenuItem from '@material-ui/core/MenuItem';
 import Tooltip from '@material-ui/core/Tooltip';
 import HelpOutline from '@material-ui/icons/HelpOutline';
 import CircularProgress from '@material-ui/core/CircularProgress';
+import { isRestricted } from 'AppData/AuthManager';
+import { useAPI } from 'AppComponents/Apis/Details/components/ApiContext';
 
 const RateLimitingLevels = {
     API: 'api',
@@ -55,6 +57,7 @@ function APIRateLimiting(props) {
 
     const isResourceLevel = apiThrottlingPolicy === null;
     const rateLimitingLevel = isResourceLevel ? RateLimitingLevels.RESOURCE : RateLimitingLevels.API;
+    const [apiFromContext] = useAPI();
 
     // Following effect is used to handle the controlled component case, If user provide onChange handler to
     // control this component, Then we accept the props as the valid input and update the current state value from props
@@ -136,7 +139,7 @@ function APIRateLimiting(props) {
                     <Divider light variant='middle' />
                 </Grid>
                 <Grid item md={1} xs={1} />
-                <Grid item md={3} xs={11}>
+                <Grid item md={5} xs={11}>
                     <FormControl component='fieldset'>
                         <FormLabel component='legend'>Rate limiting level</FormLabel>
                         <RadioGroup
@@ -147,37 +150,47 @@ function APIRateLimiting(props) {
                         >
                             <FormControlLabel
                                 value={RateLimitingLevels.API}
-                                control={<Radio color='primary' />}
+                                control={(
+                                    <Radio
+                                        color='primary'
+                                        disabled={isRestricted(['apim:api_create'], apiFromContext)}
+                                    />
+                                )}
                                 label='API Level'
                                 labelPlacement='end'
                             />
                             <FormControlLabel
                                 value={RateLimitingLevels.RESOURCE}
-                                control={<Radio color='primary' />}
+                                control={(
+                                    <Radio
+                                        color='primary'
+                                        disabled={isRestricted(['apim:api_create'], apiFromContext)}
+                                    />
+                                )}
                                 label='Operation Level'
                                 labelPlacement='end'
                             />
                         </RadioGroup>
                     </FormControl>
                 </Grid>
-                <Grid item md={8} xs={12}>
+                <Grid item md={6} xs={12}>
                     <Box minHeight={70} borderLeft={1} pl={10}>
                         {isResourceLevel ? (
                             operationRateLimitMessage
                         ) : (
                             <TextField
+                                disabled={isRestricted(['apim:api_create'], apiFromContext)}
                                 id='operation_throttling_policy'
                                 select
                                 label='Rate limiting policies'
                                 value={apiThrottlingPolicy}
-                                onChange={({ target: { value } }) =>
-                                    (onChange ? onChange(value) : setApiThrottlingPolicy(value))
-                                }
+                                onChange={({ target: { value } }) => (
+                                    onChange ? onChange(value) : setApiThrottlingPolicy(value))}
                                 helperText='Selected rate limiting policy will be applied to whole API'
                                 margin='dense'
                                 variant='outlined'
                             >
-                                {operationRateLimits.map(rateLimit => (
+                                {operationRateLimits.map((rateLimit) => (
                                     <MenuItem key={rateLimit.name} value={rateLimit.name}>
                                         {rateLimit.displayName}
                                     </MenuItem>
@@ -189,7 +202,7 @@ function APIRateLimiting(props) {
                 {/* If onChange handler is provided we assume that component is getting controlled by its parent
                 so that, hide the save cancel action */}
                 {!onChange && (
-                    <Fragment>
+                    <>
                         <Grid item md={12}>
                             <Divider />
                         </Grid>
@@ -212,7 +225,7 @@ function APIRateLimiting(props) {
                                 </Box>
                             </Box>
                         </Grid>
-                    </Fragment>
+                    </>
                 )}
             </Grid>
         </Paper>

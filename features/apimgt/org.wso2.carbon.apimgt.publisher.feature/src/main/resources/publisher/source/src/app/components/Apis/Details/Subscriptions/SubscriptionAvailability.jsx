@@ -15,10 +15,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import React, { useState } from 'react';
+import React from 'react';
 import { FormattedMessage } from 'react-intl';
 import { makeStyles } from '@material-ui/core/styles';
-import Button from '@material-ui/core/Button';
 import InputLabel from '@material-ui/core/InputLabel';
 import MenuItem from '@material-ui/core/MenuItem';
 import FormControl from '@material-ui/core/FormControl';
@@ -28,41 +27,39 @@ import Paper from '@material-ui/core/Paper';
 import PropTypes from 'prop-types';
 import Select from '@material-ui/core/Select';
 import TenantAutocomplete from 'AppComponents/Apis/Details/Subscriptions/TenantAutocomplete';
-import Alert from 'AppComponents/Shared/Alert';
 import { isRestricted } from 'AppData/AuthManager';
-import CircularProgress from '@material-ui/core/CircularProgress';
 
 
-const useStyles = makeStyles(theme => ({
+const useStyles = makeStyles((theme) => ({
     root: {
         display: 'flex',
         flexWrap: 'wrap',
     },
     formControl: {
-        margin: theme.spacing.unit * 1,
+        margin: theme.spacing(1),
         minWidth: 400,
     },
     textControl: {
-        margin: theme.spacing.unit * 1,
+        margin: theme.spacing(1),
         minWidth: 300,
     },
     selectEmpty: {
         marginTop: theme.spacing(2),
     },
     subscriptionAvailabilityPaper: {
-        marginTop: theme.spacing.unit * 2,
-        paddingLeft: theme.spacing.unit * 2,
-        paddingBottom: theme.spacing.unit * 2,
+        marginTop: theme.spacing(2),
+        paddingLeft: theme.spacing(2),
+        paddingBottom: theme.spacing(2),
     },
     grid: {
         display: 'flex',
-        margin: theme.spacing.unit * 1.25,
+        margin: theme.spacing(1.25),
     },
     gridLabel: {
-        marginTop: theme.spacing.unit * 3.5,
+        marginTop: theme.spacing(3.5),
     },
     saveButton: {
-        marginTop: theme.spacing.unit * 2,
+        marginTop: theme.spacing(2),
     },
     heading: {
         marginTop: theme.spacing(3),
@@ -79,9 +76,9 @@ const useStyles = makeStyles(theme => ({
  */
 export default function SimpleSelect(props) {
     const classes = useStyles();
-    const { api, updateAPI } = props;
-    const [tenantList, setTenantList] = React.useState([]);
-    const [isUpdating, setUpdating] = useState(false);
+    const {
+        api, setAvailability, tenantList, setTenantList,
+    } = props;
     let currentAvailability;
     if (api.subscriptionAvailability === null || api.subscriptionAvailability === 'CURRENT_TENANT') {
         currentAvailability = 'currentTenant';
@@ -102,44 +99,32 @@ export default function SimpleSelect(props) {
         setLabelWidth(inputLabel.current.offsetWidth);
     }, []);
 
-    function subscriptionAvailableTenants() {
+    /**
+     * Handle onchange for the subscription availability dropdown
+     * @param {string} value the new value selected for subscription availability
+     */
+    function subscriptionAvailableTenants(value) {
         let availabilityValue;
-        let availableTenantsList = [];
-        if (updateAPI) {
-            if (values.availability === 'currentTenant') {
-                availabilityValue = 'CURRENT_TENANT';
-            } else if (values.availability === 'allTenants') {
-                availabilityValue = 'ALL_TENANTS';
-            } else if (values.availability === 'specificTenants') {
-                availabilityValue = 'SPECIFIC_TENANTS';
-                availableTenantsList = tenantList;
-            }
-            setUpdating(true);
-            updateAPI({
-                subscriptionAvailability: availabilityValue,
-                subscriptionAvailableTenants: availableTenantsList,
-            })
-                .then(() => {
-                    Alert.info('Tenant availability updated successfully');
-                })
-                .catch((error) => {
-                    console.error(error);
-                    Alert.error('Error occurred while updating tenant availability');
-                })
-                .finally(() => setUpdating(false));
+
+        setValues({
+            ...values,
+            availability: value,
+        });
+
+        if (value === 'currentTenant') {
+            availabilityValue = 'CURRENT_TENANT';
+            setTenantList([]);
+        } else if (value === 'allTenants') {
+            availabilityValue = 'ALL_TENANTS';
+            setTenantList([]);
+        } else if (value === 'specificTenants') {
+            availabilityValue = 'SPECIFIC_TENANTS';
         }
+        setAvailability({
+            subscriptionAvailability: availabilityValue,
+        });
     }
 
-    /**
-     * Handles the availability that is selected
-     * @param {event} event Validation state object
-     */
-    function handleChange(event) {
-        setValues(oldValues => ({
-            ...oldValues,
-            [event.target.name]: event.target.value,
-        }));
-    }
     return (
         <Grid item xs={12} md={12} lg={12}>
             <Typography variant='h4' className={classes.heading}>
@@ -166,7 +151,9 @@ export default function SimpleSelect(props) {
                                 <InputLabel ref={inputLabel} htmlFor='outlined-age-simple' />
                                 <Select
                                     value={values.availability}
-                                    onChange={handleChange}
+                                    onChange={({ target: { value } }) => {
+                                        subscriptionAvailableTenants(value);
+                                    }}
                                     labelWidth={labelWidth}
                                     displayEmpty
                                     name='availability'
@@ -196,26 +183,14 @@ export default function SimpleSelect(props) {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item xs={2}>
-                            <Button
-                                variant='contained'
-                                color='primary'
-                                onClick={subscriptionAvailableTenants}
-                                className={classes.saveButton}
-                                disabled={isUpdating || isUIElementDisabled}
-                            >
-                                <FormattedMessage id='Apis.Details.Scopes.CreateScope.save' defaultMessage='Save' />
-                                {isUpdating && <CircularProgress size={20} />}
-                            </Button>
-                        </Grid>
                         {isSpecificTenants ? (
-                            <Grid item xs={8} className={classes.tenantsList} >
-                                <TenantAutocomplete setTenantList={setTenantList} api={api} />
+                            <Grid item xs={8} className={classes.tenantsList}>
+                                <TenantAutocomplete setTenantList={setTenantList} tenantList={tenantList} api={api} />
                             </Grid>
                         ) : <Grid item xs={8} />}
                     </Grid>
                 </form>
-            </Paper >
+            </Paper>
         </Grid>
     );
 }
@@ -223,6 +198,7 @@ SimpleSelect.propTypes = {
     classes: PropTypes.shape({}).isRequired,
     intl: PropTypes.shape({ formatMessage: PropTypes.func }).isRequired,
     api: PropTypes.shape({ policies: PropTypes.array }).isRequired,
-    updateAPI: PropTypes.func.isRequired,
+    setAvailability: PropTypes.func.isRequired,
+    setTenantList: PropTypes.func.isRequired,
+    tenantList: PropTypes.shape([]).isRequired,
 };
-

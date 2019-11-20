@@ -82,7 +82,7 @@ import java.util.Set;
  */
 public class OAS3Parser extends APIDefinition {
     private static final Log log = LogFactory.getLog(OAS3Parser.class);
-    private static final String OPENAPI_SECURITY_SCHEMA_KEY = "default";
+    static final String OPENAPI_SECURITY_SCHEMA_KEY = "default";
 
     /**
      * This method returns URI templates according to the given swagger file
@@ -465,9 +465,35 @@ public class OAS3Parser extends APIDefinition {
     @Override
     public String getOASDefinitionForPublisher(API api, String oasDefinition) throws APIManagementException {
         OpenAPI openAPI = getOpenAPI(oasDefinition);
+        if (openAPI.getComponents() == null) {
+            openAPI.setComponents(new Components());
+        }
+        Map<String, SecurityScheme> securitySchemes = openAPI.getComponents().getSecuritySchemes();
+        if (securitySchemes == null) {
+            securitySchemes = new HashMap<>();
+            openAPI.getComponents().setSecuritySchemes(securitySchemes);
+        }
+        SecurityScheme securityScheme = securitySchemes.get(OPENAPI_SECURITY_SCHEMA_KEY);
+        if (securityScheme == null) {
+            securityScheme = new SecurityScheme();
+            securityScheme.setType(SecurityScheme.Type.OAUTH2);
+            securitySchemes.put(OPENAPI_SECURITY_SCHEMA_KEY, securityScheme);
+            List<SecurityRequirement> security = new ArrayList<SecurityRequirement>();
+            SecurityRequirement secReq = new SecurityRequirement();
+            secReq.addList(OPENAPI_SECURITY_SCHEMA_KEY, new ArrayList<String>());
+            security.add(secReq);
+            openAPI.setSecurity(security);
+        }
+        if (securityScheme.getFlows() == null) {
+            securityScheme.setFlows(new OAuthFlows());
+        }
         // setting scopes id if it is null
         // https://github.com/swagger-api/swagger-parser/issues/1202
-        OAuthFlow oAuthFlow = openAPI.getComponents().getSecuritySchemes().get("default").getFlows().getImplicit();
+        OAuthFlow oAuthFlow = securityScheme.getFlows().getImplicit();
+        if (oAuthFlow == null) {
+            oAuthFlow = new OAuthFlow();
+            securityScheme.getFlows().setImplicit(oAuthFlow);
+        }
         if (oAuthFlow.getScopes() == null) {
             oAuthFlow.setScopes(new Scopes());
         }
@@ -857,22 +883,24 @@ public class OAS3Parser extends APIDefinition {
             for (Map.Entry<PathItem.HttpMethod, Operation> entry : pathItem.readOperationsMap().entrySet()) {
                 Operation operation = entry.getValue();
                 Map<String, Object> extensions = operation.getExtensions();
-                // remove mediation extension
-                if (extensions.containsKey(APIConstants.SWAGGER_X_MEDIATION_SCRIPT)) {
-                    extensions.remove(APIConstants.SWAGGER_X_MEDIATION_SCRIPT);
-                }
-                // set x-scope value to security definition if it not there.
-                if (extensions.containsKey(APIConstants.SWAGGER_X_WSO2_SCOPES)) {
-                    String scope = (String) extensions.get(APIConstants.SWAGGER_X_WSO2_SCOPES);
-                    List<SecurityRequirement> security = operation.getSecurity();
-                    if (security == null) {
-                        security = new ArrayList<>();
-                        operation.setSecurity(security);
+                if (extensions != null) {
+                    // remove mediation extension
+                    if (extensions.containsKey(APIConstants.SWAGGER_X_MEDIATION_SCRIPT)) {
+                        extensions.remove(APIConstants.SWAGGER_X_MEDIATION_SCRIPT);
                     }
-                    for (Map<String, List<String>> requirement : security) {
-                        if (requirement.get(OPENAPI_SECURITY_SCHEMA_KEY) == null || !requirement
-                                .get(OPENAPI_SECURITY_SCHEMA_KEY).contains(scope)) {
-                            requirement.put(OPENAPI_SECURITY_SCHEMA_KEY, Collections.singletonList(scope));
+                    // set x-scope value to security definition if it not there.
+                    if (extensions.containsKey(APIConstants.SWAGGER_X_WSO2_SCOPES)) {
+                        String scope = (String) extensions.get(APIConstants.SWAGGER_X_WSO2_SCOPES);
+                        List<SecurityRequirement> security = operation.getSecurity();
+                        if (security == null) {
+                            security = new ArrayList<>();
+                            operation.setSecurity(security);
+                        }
+                        for (Map<String, List<String>> requirement : security) {
+                            if (requirement.get(OPENAPI_SECURITY_SCHEMA_KEY) == null || !requirement
+                                    .get(OPENAPI_SECURITY_SCHEMA_KEY).contains(scope)) {
+                                requirement.put(OPENAPI_SECURITY_SCHEMA_KEY, Collections.singletonList(scope));
+                            }
                         }
                     }
                 }
@@ -885,9 +913,8 @@ public class OAS3Parser extends APIDefinition {
      *
      * @param oasDefinition OAS definition
      * @return OpenAPI
-     * @throws APIManagementException
      */
-    private OpenAPI getOpenAPI(String oasDefinition) throws APIManagementException {
+    OpenAPI getOpenAPI(String oasDefinition) {
         OpenAPIV3Parser openAPIV3Parser = new OpenAPIV3Parser();
         SwaggerParseResult parseAttemptForV3 = openAPIV3Parser.readContents(oasDefinition, null, null);
         if (CollectionUtils.isNotEmpty(parseAttemptForV3.getMessages())) {
@@ -907,23 +934,8 @@ public class OAS3Parser extends APIDefinition {
         resource.setAuthType(APIConstants.AUTH_APPLICATION_OR_USER_LEVEL_TOKEN);
         resource.setPolicy(APIConstants.DEFAULT_SUB_POLICY_UNLIMITED);
         resource.setPath("/");
-
-        resource.setVerb(APIConstants.HTTP_GET);
-        Operation getOperation = createOperation(resource);
         resource.setVerb(APIConstants.HTTP_POST);
         Operation postOperation = createOperation(resource);
-
-        //get operation
-        Parameter getParameter = new Parameter();
-        getParameter.setName(APIConstants.GRAPHQL_SWAGGER_QUERY);
-        getParameter.setIn(APIConstants.GRAPHQL_SWAGGER_QUERY);
-        getParameter.setRequired(true);
-        getParameter.setDescription("Query to be passed to graphQL API");
-
-        Schema getSchema = new Schema();
-        getSchema.setType("string");
-        getParameter.setSchema(getSchema);
-        getOperation.addParametersItem(getParameter);
 
         //post operation
         RequestBody requestBody = new RequestBody();
@@ -949,7 +961,6 @@ public class OAS3Parser extends APIDefinition {
 
         //add post and get operations to path /*
         PathItem pathItem = new PathItem();
-        pathItem.setGet(getOperation);
         pathItem.setPost(postOperation);
         Paths paths = new Paths();
         paths.put("/", pathItem);

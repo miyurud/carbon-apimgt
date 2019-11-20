@@ -37,7 +37,7 @@ import API from '../../../../data/api'; // TODO: Use webpack aliases instead of 
 import Alert from '../../../Shared/Alert';
 import { endpointsToList } from './endpointUtils';
 
-const styles = theme => ({
+const styles = (theme) => ({
     endpointTypeSelect: {
         width: '50%',
     },
@@ -85,7 +85,6 @@ function GeneralConfiguration(props) {
         handleEndpointSecurityChange,
         endpointType,
         classes,
-        apiType,
     } = props;
     const [isConfigExpanded, setConfigExpand] = useState(false);
     const [endpointCertificates, setEndpointCertificates] = useState([]);
@@ -116,7 +115,7 @@ function GeneralConfiguration(props) {
                 if (err.message === 'Conflict') {
                     Alert.error(intl.formatMessage({
                         id: 'Apis.Details.Endpoints.GeneralConfiguration.Certificates.certificate.alias.exist',
-                        defaultMessage: 'Adding Certificate Failed. Certificate alias exists.',
+                        defaultMessage: 'Adding Certificate Failed. Certificate Alias Exists.',
                     }));
                 } else if (err.response) {
                     Alert.error(err.response.body.description);
@@ -128,7 +127,6 @@ function GeneralConfiguration(props) {
                 }
             });
     };
-
     /**
      * Method to delete the selected certificate.
      *
@@ -186,7 +184,7 @@ function GeneralConfiguration(props) {
     }, []);
 
     return (
-        <React.Fragment>
+        <>
             <ExpansionPanel
                 expanded={isConfigExpanded}
                 onChange={() => setConfigExpand(!isConfigExpanded)}
@@ -198,47 +196,50 @@ function GeneralConfiguration(props) {
                     id='panel1bh-header'
                     className={classes.configHeaderContainer}
                 >
-                    {apiType !== 'HTTP' || endpointType.key === 'awslambda' ? (
+                    {endpointType.key === 'awslambda'
+                        ? (<div />)
+                        : (
+                            <Typography
+                                className={classes.secondaryHeading}
+                                hidden={
+                                    endpointType.key === 'default'
+                                    || endpointType.key === 'awslambda'
+                                }
+                            >
+                                <FormattedMessage
+                                    id='Apis.Details.Endpoints.GeneralConfiguration.endpoint.security.sub.heading'
+                                    defaultMessage='Endpoint Security'
+                                />
+                                {' '}
+:
+                                {endpointSecurityInfo !== null ? endpointSecurityInfo.type : 'NONE'}
+                            </Typography>
+                        )}
+                    {endpointType.key === 'default' || endpointType.key === 'awslambda' ? (
                         <div />
                     ) : (
                         <Typography
                             className={classes.secondaryHeading}
-                            hidden={
-                                apiType !== 'HTTP' || endpointType.key === 'default' || endpointType.key === 'awslambda'
-                            }
+                            hidden={endpointType.key === 'default' || endpointType.key === 'awslambda'}
                         >
-                            <FormattedMessage
-                                id='Apis.Details.Endpoints.GeneralConfiguration.endpoint.security.sub.heading'
-                                defaultMessage='Endpoint Security'
-                            />
-                            : {endpointSecurityInfo !== null ? endpointSecurityInfo.type : 'NONE'}
-                        </Typography>
-                    )}
-                    {apiType !== 'HTTP' || endpointType.key === 'default' || endpointType.key === 'awslambda' ? (
-                        <div />
-                    ) : (
-                        <Typography
-                            className={classes.secondaryHeading}
-                            hidden={
-                                apiType !== 'HTTP' || endpointType.key === 'default' || endpointType.key === 'awslambda'
-                            }
-                        >
-                            {' | '}
+                             |
                             <FormattedMessage
                                 id='Apis.Details.Endpoints.GeneralConfiguration.certificates.sub.heading'
                                 defaultMessage='Certificates'
                             />
-                            : {endpointCertificates.length}
+                            :
+                            {' '}
+                            {endpointCertificates.length}
                         </Typography>
                     )}
                 </ExpansionPanelSummary>
                 <ExpansionPanelDetails className={classes.generalConfigContent}>
                     <Grid container direction='row' xs={12}>
-                        {apiType !== 'HTTP' ? (
+                        {endpointType.key === 'awslambda' ? (
                             <div />
                         ) : (
                             <Grid container item xs={6}>
-                                {apiType !== 'HTTP' ? (
+                                {endpointType.key === 'awslambda' ? (
                                     <div />
                                 ) : (
                                     <Grid
@@ -250,23 +251,23 @@ function GeneralConfiguration(props) {
                                         <FormControlLabel
                                             value='start'
                                             checked={endpointSecurityInfo !== null}
-                                            control={
+                                            control={(
                                                 <Switch
                                                     color='primary'
                                                     disabled={isRestricted(['apim:api_create'], api)}
                                                 />
-                                            }
-                                            label={
+                                            )}
+                                            label={(
                                                 <Typography className={classes.securityHeading}>
                                                     <FormattedMessage
                                                         id={
-                                                            'Apis.Details.Endpoints.EndpointOverview.' +
-                                                            'endpoint.security.enable.switch'
+                                                            'Apis.Details.Endpoints.EndpointOverview.'
+                                                            + 'endpoint.security.enable.switch'
                                                         }
                                                         defaultMessage='Endpoint Security'
                                                     />
                                                 </Typography>
-                                            }
+                                            )}
                                             labelPlacement='start'
                                             onChange={handleToggleEndpointSecurity}
                                         />
@@ -297,7 +298,7 @@ function GeneralConfiguration(props) {
                     </Grid>
                 </ExpansionPanelDetails>
             </ExpansionPanel>
-        </React.Fragment>
+        </>
     );
 }
 
@@ -309,7 +310,6 @@ GeneralConfiguration.propTypes = {
     endpointType: PropTypes.shape({}).isRequired,
     classes: PropTypes.shape({}).isRequired,
     intl: PropTypes.shape({}).isRequired,
-    apiType: PropTypes.string.isRequired,
 };
 
 export default injectIntl(withStyles(styles)(GeneralConfiguration));

@@ -201,6 +201,7 @@ class Details extends Component {
                                 label: application.name,
                                 tokenType: application.tokenType,
                                 owner: application.owner,
+                                hashEnabled: application.hashEnabled,
                             }}
                         />
                     </div>
@@ -240,6 +241,7 @@ class Details extends Component {
                 },
             },
         } = theme;
+        const strokeColorMain = theme.palette.getContrastText(theme.custom.infoBar.background);
         if (notFound) {
             return <ResourceNotFound />;
         } else if (!application) {
@@ -267,7 +269,7 @@ class Details extends Component {
                             <CustomIcon width={rootIconSize} height={rootIconSize} icon='applications' />
                             {rootIconTextVisible && (
                                 <Typography className={classes.leftLInkMainText}>
-                                    <FormattedMessage id='Apis.Details.index.all.apis' defaultMessage='ALL APPs' />
+                                    <FormattedMessage id='Applications.Details.applications.all' defaultMessage='ALL APPs' />
                                 </Typography>
                             )}
                         </Link>
@@ -278,7 +280,12 @@ class Details extends Component {
                 </div>
                 <div className={classes.content}>
                     <InfoBar applicationId={match.params.application_uuid} innerRef={node => (this.infoBar = node)} />
-                    <div className={classes.contentDown}>
+                    <div
+                        className={classNames(
+                            { [classes.contentLoader]: position === 'horizontal' },
+                            { [classes.contentLoaderRightMenu]: position === 'vertical-right' },
+                        )}
+                    >
                         <Switch>
                             <Redirect exact from='/applications/:applicationId' to={redirectUrl} />
                             <Route

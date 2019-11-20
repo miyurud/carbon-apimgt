@@ -21,6 +21,9 @@ public class SettingsDTO   {
     private List<String> scopes = new ArrayList<>();
     private Boolean applicationSharingEnabled = false;
     private Boolean mapExistingAuthApps = false;
+    private String apiGatewayEndpoint = null;
+    private Boolean monetizationEnabled = false;
+    private Boolean isUnlimitedTierPaid = false;
 
   /**
    **/
@@ -90,6 +93,57 @@ public class SettingsDTO   {
     this.mapExistingAuthApps = mapExistingAuthApps;
   }
 
+  /**
+   **/
+  public SettingsDTO apiGatewayEndpoint(String apiGatewayEndpoint) {
+    this.apiGatewayEndpoint = apiGatewayEndpoint;
+    return this;
+  }
+
+  
+  @ApiModelProperty(value = "")
+  @JsonProperty("apiGatewayEndpoint")
+  public String getApiGatewayEndpoint() {
+    return apiGatewayEndpoint;
+  }
+  public void setApiGatewayEndpoint(String apiGatewayEndpoint) {
+    this.apiGatewayEndpoint = apiGatewayEndpoint;
+  }
+
+  /**
+   **/
+  public SettingsDTO monetizationEnabled(Boolean monetizationEnabled) {
+    this.monetizationEnabled = monetizationEnabled;
+    return this;
+  }
+
+  
+  @ApiModelProperty(value = "")
+  @JsonProperty("monetizationEnabled")
+  public Boolean isMonetizationEnabled() {
+    return monetizationEnabled;
+  }
+  public void setMonetizationEnabled(Boolean monetizationEnabled) {
+    this.monetizationEnabled = monetizationEnabled;
+  }
+
+  /**
+   **/
+  public SettingsDTO isUnlimitedTierPaid(Boolean isUnlimitedTierPaid) {
+    this.isUnlimitedTierPaid = isUnlimitedTierPaid;
+    return this;
+  }
+
+  
+  @ApiModelProperty(value = "")
+  @JsonProperty("IsUnlimitedTierPaid")
+  public Boolean isIsUnlimitedTierPaid() {
+    return isUnlimitedTierPaid;
+  }
+  public void setIsUnlimitedTierPaid(Boolean isUnlimitedTierPaid) {
+    this.isUnlimitedTierPaid = isUnlimitedTierPaid;
+  }
+
 
   @Override
   public boolean equals(java.lang.Object o) {
@@ -103,12 +157,15 @@ public class SettingsDTO   {
     return Objects.equals(grantTypes, settings.grantTypes) &&
         Objects.equals(scopes, settings.scopes) &&
         Objects.equals(applicationSharingEnabled, settings.applicationSharingEnabled) &&
-        Objects.equals(mapExistingAuthApps, settings.mapExistingAuthApps);
+        Objects.equals(mapExistingAuthApps, settings.mapExistingAuthApps) &&
+        Objects.equals(apiGatewayEndpoint, settings.apiGatewayEndpoint) &&
+        Objects.equals(monetizationEnabled, settings.monetizationEnabled) &&
+        Objects.equals(isUnlimitedTierPaid, settings.isUnlimitedTierPaid);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(grantTypes, scopes, applicationSharingEnabled, mapExistingAuthApps);
+    return Objects.hash(grantTypes, scopes, applicationSharingEnabled, mapExistingAuthApps, apiGatewayEndpoint, monetizationEnabled, isUnlimitedTierPaid);
   }
 
   @Override
@@ -120,6 +177,9 @@ public class SettingsDTO   {
     sb.append("    scopes: ").append(toIndentedString(scopes)).append("\n");
     sb.append("    applicationSharingEnabled: ").append(toIndentedString(applicationSharingEnabled)).append("\n");
     sb.append("    mapExistingAuthApps: ").append(toIndentedString(mapExistingAuthApps)).append("\n");
+    sb.append("    apiGatewayEndpoint: ").append(toIndentedString(apiGatewayEndpoint)).append("\n");
+    sb.append("    monetizationEnabled: ").append(toIndentedString(monetizationEnabled)).append("\n");
+    sb.append("    isUnlimitedTierPaid: ").append(toIndentedString(isUnlimitedTierPaid)).append("\n");
     sb.append("}");
     return sb.toString();
   }

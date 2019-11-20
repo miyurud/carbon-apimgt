@@ -17,51 +17,45 @@
  */
 
 import React from 'react';
-import { useAPI } from 'AppComponents/Apis/Details/components/ApiContext';
-import { TextField, MenuItem } from '@material-ui/core';
+import { MenuItem, TextField } from '@material-ui/core';
 import { FormattedMessage } from 'react-intl';
 import PropTypes from 'prop-types';
-import { endpointsToList } from '../endpointUtils';
 
 export default function SelectEndpoint(props) {
     const {
         onChange,
-        onBlur,
         endpoint,
         isEndpointEmpty,
+        endpoints,
     } = props;
-    const [apiFromContext] = useAPI();
-    let endpoints = [];
-    if (apiFromContext.endpointConfig !== null) {
-        endpoints = endpointsToList(apiFromContext.endpointConfig);
-    }
     const iff = (condition, then, otherwise) => (condition ? then : otherwise);
     return (
         <TextField
             autoFocus
             error={isEndpointEmpty || endpoints.length === 0}
-            helperText={endpoints.length === 0 ? <FormattedMessage
-                id='Apis.Details.Endpoints.GeneralConfiguration.UploadCertificate.endpoint.empty.error'
-                defaultMessage='Save endpoints before adding the certificate'
-            /> : iff(isEndpointEmpty, <FormattedMessage
+            helperText={endpoints.length === 0 ? (
+                <FormattedMessage
+                    id='Apis.Details.Endpoints.GeneralConfiguration.UploadCertificate.endpoint.empty.error'
+                    defaultMessage='Save endpoints before adding the Certificate'
+                />
+            ) : iff(isEndpointEmpty, <FormattedMessage
                 id='Apis.Details.Endpoints.GeneralConfiguration.UploadCertificate.endpoint.error'
                 defaultMessage='Endpoint should not be empty'
             />, <FormattedMessage
                 id='Apis.Details.Endpoints.GeneralConfiguration.UploadCertificate.endpoint.helpertext'
-                defaultMessage='Endpoint for the certificate'
-            />)
-            }
+                defaultMessage='Endpoint for the Certificate'
+            />)}
             required
             id='certificateEndpoint'
-            label={
+            label={(
                 <FormattedMessage
                     id='Apis.Details.Endpoints.GeneralConfiguration.UploadCertificate.endpoint'
                     defaultMessage='Endpoint'
-                />}
+                />
+            )}
             value={endpoint}
             placeholder='Endpoint'
-            onChange={event => onChange(event.target.value)}
-            onBlur={event => onBlur(event.target.value)}
+            onChange={(event) => onChange(event.target.value)}
             margin='normal'
             variant='outlined'
             fullWidth
@@ -80,7 +74,6 @@ export default function SelectEndpoint(props) {
 SelectEndpoint.propTypes = {
     endpoints: PropTypes.shape({}).isRequired,
     onChange: PropTypes.func.isRequired,
-    onBlur: PropTypes.func.isRequired,
     classes: PropTypes.shape({}).isRequired,
     endpoint: PropTypes.string.isRequired,
     isEndpointEmpty: PropTypes.string.isRequired,

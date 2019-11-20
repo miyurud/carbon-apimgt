@@ -105,7 +105,7 @@ public class APIMappingUtil {
         context = context.startsWith("/") ? context : ("/" + context);
         String providerDomain = MultitenantUtils.getTenantDomain(provider);
         if (!MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equalsIgnoreCase(providerDomain) &&
-                !context.startsWith("/t")) {
+                dto.getId() == null) {
             //Create tenant aware context for API
             context = "/t/" + providerDomain + context;
         }
@@ -290,6 +290,26 @@ public class APIMappingUtil {
         return apiMonetizationInfoDTO;
     }
 
+    public static APIMonetizationInfoDTO getMonetizationInfoDTO(APIProductIdentifier apiProductIdentifier)
+            throws APIManagementException {
+
+        APIProvider apiProvider = RestApiUtil.getLoggedInUserProvider();
+        APIProduct apiProduct = apiProvider.getAPIProduct(apiProductIdentifier);
+        APIMonetizationInfoDTO apiMonetizationInfoDTO = new APIMonetizationInfoDTO();
+        //set the information related to monetization to the DTO
+        apiMonetizationInfoDTO.setEnabled(apiProduct.getMonetizationStatus());
+        Map<String, String> monetizationPropertiesMap = new HashMap<>();
+        if (apiProduct.getMonetizationProperties() != null) {
+            JSONObject monetizationProperties = apiProduct.getMonetizationProperties();
+            for (Object propertyKey : monetizationProperties.keySet()) {
+                String key = (String) propertyKey;
+                monetizationPropertiesMap.put(key, (String) monetizationProperties.get(key));
+            }
+        }
+        apiMonetizationInfoDTO.setProperties(monetizationPropertiesMap);
+        return apiMonetizationInfoDTO;
+    }
+
     /**
      * Get map of monetized policies to plan mapping
      *
@@ -306,6 +326,18 @@ public class APIMappingUtil {
         API api = apiProvider.getAPI(apiIdentifier);
         APIMonetizationInfoDTO apiMonetizationInfoDTO = new APIMonetizationInfoDTO();
         apiMonetizationInfoDTO.setEnabled(api.getMonetizationStatus());
+        apiMonetizationInfoDTO.setProperties(monetizedPoliciesToPlanMapping);
+        return apiMonetizationInfoDTO;
+    }
+
+    public static APIMonetizationInfoDTO getMonetizedTiersDTO(APIProductIdentifier apiProductIdentifier,
+                                                              Map<String, String> monetizedPoliciesToPlanMapping)
+            throws APIManagementException {
+
+        APIProvider apiProvider = RestApiUtil.getLoggedInUserProvider();
+        APIProduct apiProduct = apiProvider.getAPIProduct(apiProductIdentifier);
+        APIMonetizationInfoDTO apiMonetizationInfoDTO = new APIMonetizationInfoDTO();
+        apiMonetizationInfoDTO.setEnabled(apiProduct.getMonetizationStatus());
         apiMonetizationInfoDTO.setProperties(monetizedPoliciesToPlanMapping);
         return apiMonetizationInfoDTO;
     }
@@ -371,6 +403,34 @@ public class APIMappingUtil {
         }
         apiListDTO.setCount(apiInfoDTOs.size());
         return apiListDTO;
+    }
+
+    /**
+     * Converts a List object of URITemplates into APIOperations DTO List
+     * @param uriTemplateList uriTemplateList
+     * @return List of APIOperationsDTO object
+     */
+    public static List<APIOperationsDTO> fromURITemplateListToOprationList(List<URITemplate> uriTemplateList) {
+        int index = 0;
+        List<APIOperationsDTO> operations = new ArrayList<>();
+        for (URITemplate uriTemplate : uriTemplateList) {
+            uriTemplate.setId((index++));
+            operations.add(fromURITemplateToOperationList(uriTemplate));
+        }
+        return operations;
+    }
+
+    /**
+     * Converts a uriTemplate to APIOperations DTO
+     * @param uriTemplate uriTemplate
+     * @return APIOperationsDTO object
+     */
+    private static APIOperationsDTO fromURITemplateToOperationList(URITemplate uriTemplate) {
+        APIOperationsDTO operation = new APIOperationsDTO();
+        operation.setId(Integer.toString(uriTemplate.getId()));
+        operation.setVerb(uriTemplate.getHTTPVerb());
+        operation.setTarget(uriTemplate.getUriTemplate());
+        return operation;
     }
 
     /**
@@ -780,7 +840,9 @@ public class APIMappingUtil {
             dto.setAdditionalProperties(additionalPropertiesMap);
         }
 
-        dto.setEndpointImplementationType(APIDTO.EndpointImplementationTypeEnum.valueOf(model.getImplementation()));
+        if (model.getImplementation() != null) {
+            dto.setEndpointImplementationType(APIDTO.EndpointImplementationTypeEnum.valueOf(model.getImplementation()));
+        }
 
         dto.setAccessControl(APIConstants.API_RESTRICTED_VISIBILITY.equals(model.getAccessControl()) ?
                 APIDTO.AccessControlEnum.RESTRICTED :
@@ -1631,6 +1693,15 @@ public class APIMappingUtil {
         List<String> tagsToReturn = new ArrayList<>(apiTags);
         productDto.setTags(tagsToReturn);
 
+        productDto.setEnableSchemaValidation(product.isEnabledSchemaValidation());
+
+        if (APIConstants.ENABLED.equals(product.getResponseCache())) {
+            productDto.setResponseCachingEnabled(Boolean.TRUE);
+        } else {
+            productDto.setResponseCachingEnabled(Boolean.FALSE);
+        }
+
+        productDto.setCacheTimeout(product.getCacheTimeout());
         APIProductBusinessInformationDTO businessInformation = new APIProductBusinessInformationDTO();
         businessInformation.setBusinessOwner(product.getBusinessOwner());
         businessInformation.setBusinessOwnerEmail(product.getBusinessOwnerEmail());
@@ -1811,7 +1882,7 @@ public class APIMappingUtil {
         context = context.startsWith("/") ? context : ("/" + context);
         String providerDomain = MultitenantUtils.getTenantDomain(provider);
         if (!MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equalsIgnoreCase(providerDomain) &&
-                !context.startsWith("/t")) {
+                dto.getId() == null) {
             //Create tenant aware context for API
             context = "/t/" + providerDomain + context;
         }
@@ -1824,6 +1895,21 @@ public class APIMappingUtil {
         List<String> apiProductTags = dto.getTags();
         Set<String> tagsToReturn = new HashSet<>(apiProductTags);
         product.addTags(tagsToReturn);
+
+        if (dto.isEnableSchemaValidation() != null) {
+            product.setEnableSchemaValidation(dto.isEnableSchemaValidation());
+        }
+
+        if (dto.isResponseCachingEnabled() != null && dto.isResponseCachingEnabled()) {
+            product.setResponseCache(APIConstants.ENABLED);
+        } else {
+            product.setResponseCache(APIConstants.DISABLED);
+        }
+        if (dto.getCacheTimeout() != null) {
+            product.setCacheTimeout(dto.getCacheTimeout());
+        } else {
+            product.setCacheTimeout(APIConstants.API_RESPONSE_CACHE_TIMEOUT);
+        }
 
         if(dto.getBusinessInformation() != null) {
             product.setBusinessOwner(dto.getBusinessInformation().getBusinessOwner());
@@ -1908,8 +1994,6 @@ public class APIMappingUtil {
                 template.setHTTPVerb(resourceItem.getVerb());
                 template.setResourceURI(resourceItem.getTarget());
                 template.setUriTemplate(resourceItem.getTarget());
-                template.setAuthType(resourceItem.getAuthType());
-                template.setThrottlingTier(resourceItem.getThrottlingPolicy());
 
                 APIProductResource resource = new APIProductResource();
                 resource.setApiId(res.getApiId());

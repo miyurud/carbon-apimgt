@@ -28,7 +28,7 @@ import PropTypes from 'prop-types';
 import { isRestricted } from 'AppData/AuthManager';
 import APIContext from 'AppComponents/Apis/Details/components/ApiContext';
 
-const styles = theme => ({
+const styles = (theme) => ({
     endpointInputWrapper: {
         width: '100%',
         display: 'flex',
@@ -38,11 +38,11 @@ const styles = theme => ({
         width: '100%',
     },
     input: {
-        marginLeft: theme.spacing(),
+        marginLeft: theme.spacing(1),
         flex: 1,
     },
     iconButton: {
-        padding: theme.spacing(),
+        padding: theme.spacing(1),
     },
 });
 
@@ -58,7 +58,6 @@ function GenericEndpointAdd(props) {
         addEndpoint,
     } = props;
     const [serviceUrl, setServiceUrl] = useState('');
-    const [isError, setError] = useState(false);
     const { api } = useContext(APIContext);
 
     /**
@@ -72,20 +71,19 @@ function GenericEndpointAdd(props) {
     return (
         <div className={classes.endpointInputWrapper}>
             <TextField
-                label={<FormattedMessage
-                    id='Apis.Details.Endpoints.GenericEndpoint.service.url.input'
-                    defaultMessage='Service URL'
-                />}
+                label={(
+                    <FormattedMessage
+                        id='Apis.Details.Endpoints.GenericEndpoint.service.url.input'
+                        defaultMessage='Service URL'
+                    />
+                )}
                 disabled={isRestricted(['apim:api_create'], api)}
                 className={classes.textField}
                 value={serviceUrl}
-                onChange={event => setServiceUrl(event.target.value)}
-                onBlur={event => setError(event.target.value === '')}
+                onChange={(event) => setServiceUrl(event.target.value)}
                 variant='outlined'
                 margin='normal'
-                placeholder='Add new endpoint'
-                error={isError}
-                required
+                placeholder='Enter the Endpoint URL and press + button'
                 InputProps={{
                     endAdornment: (
                         <InputAdornment position='end'>
@@ -104,7 +102,8 @@ function GenericEndpointAdd(props) {
                     ),
                 }}
             />
-        </div>);
+        </div>
+    );
 }
 
 GenericEndpointAdd.propTypes = {

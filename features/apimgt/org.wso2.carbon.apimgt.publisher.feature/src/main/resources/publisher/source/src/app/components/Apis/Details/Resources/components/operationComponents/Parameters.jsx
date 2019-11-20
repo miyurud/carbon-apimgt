@@ -16,11 +16,14 @@
  * under the License.
  */
 
-import React, { Fragment } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
 import Grid from '@material-ui/core/Grid';
 import Divider from '@material-ui/core/Divider';
 import Typography from '@material-ui/core/Typography';
+
+import AddParameter from './AddParameter';
+import ListParameters from './ListParameters';
 
 /**
  *
@@ -29,32 +32,59 @@ import Typography from '@material-ui/core/Typography';
  * @param {*} props
  * @returns
  */
-export default function Parameters() {
-    // const { operation, operationActionsDispatcher } = props;
-    // TODO: need to restructure the below fragment to a
-    // component with placeholders to give section name and content ~tmkb
+export default function Parameters(props) {
+    const {
+        operation, spec, target, verb, operationsDispatcher, disableUpdate,
+    } = props;
+    if (!spec.openapi) {
+        return null; // TODO: add support to swagger 2 parameter support ~tmkb
+    }
+    const haveParameters = (operation.parameters && operation.parameters.length !== 0) || operation.requestBody;
     return (
-        <Fragment>
-            <Grid item md={12}>
+        <>
+            <Grid item xs={12} md={12}>
                 <Typography variant='subtitle1'>
                     Parameters
                     <Divider variant='middle' />
                 </Typography>
             </Grid>
+            <Grid item xs={1} />
+            <Grid item xs={11}>
+                {!disableUpdate && (
+                    <AddParameter
+                        target={target}
+                        verb={verb}
+                        operationsDispatcher={operationsDispatcher}
+                        operation={operation}
+                    />
+                )}
+            </Grid>
             <Grid item md={1} />
             <Grid item md={11}>
-                Parameters
+                {haveParameters && (
+                    <ListParameters
+                        disableUpdate={disableUpdate}
+                        target={target}
+                        verb={verb}
+                        operationsDispatcher={operationsDispatcher}
+                        operation={operation}
+                        spec={spec}
+                    />
+                )}
             </Grid>
-        </Fragment>
+        </>
     );
 }
 
 Parameters.propTypes = {
-    operation: PropTypes.shape({
-        target: PropTypes.string.isRequired,
-        verb: PropTypes.string.isRequired,
-        spec: PropTypes.shape({}).isRequired,
-    }).isRequired,
+    target: PropTypes.string.isRequired,
+    verb: PropTypes.string.isRequired,
+    spec: PropTypes.shape({}).isRequired,
+    operationsDispatcher: PropTypes.func.isRequired,
+    operation: PropTypes.shape({}).isRequired,
+    disableUpdate: PropTypes.bool,
 };
 
-Parameters.defaultProps = {};
+Parameters.defaultProps = {
+    disableUpdate: false,
+};

@@ -34,8 +34,8 @@ function getAPIProductTaggedOperations(apiProduct, openAPI) {
             // in `verb` if definition has mixed case verbs
             const openAPIOperation = openAPI.paths[target] && openAPI.paths[target][verb.toLowerCase()];
             if (!openAPIOperation) {
-                console.warn(`Could not find target = ${target} ` +
-                        `verb (lower cased) = ${verb.toLowerCase()} operation in OpenAPI definition`);
+                console.warn(`Could not find target = ${target} `
+                        + `verb (lower cased) = ${verb.toLowerCase()} operation in OpenAPI definition`);
                 // Skipping not found operations
                 return null;
             }
@@ -66,8 +66,8 @@ function getTaggedOperations(api, openAPI) {
             // issues in `verb` if definition has mixed case verbs
             const openAPIOperation = openAPI.paths[target] && openAPI.paths[target][verb.toLowerCase()];
             if (!openAPIOperation) {
-                console.warn(`Could not find target = ${target} ` +
-                        `verb (lower cased) = ${verb.toLowerCase()} operation in OpenAPI definition`);
+                console.warn(`Could not find target = ${target} `
+                        + `verb (lower cased) = ${verb.toLowerCase()} operation in OpenAPI definition`);
                 // Skipping not found operations
                 return null;
             }
@@ -148,15 +148,35 @@ function getOperationScopes(operation, spec) {
     const openAPIVersion = getVersion(spec);
     let scopes = [];
     if (VERSIONS.V3.includes(openAPIVersion)) {
-        if (Array.isArray(operation.security) && operation.security.find(item => item.default)) {
-            scopes = operation.security.find(item => item.default).default;
+        if (Array.isArray(operation.security) && operation.security.find((item) => item.default)) {
+            scopes = operation.security.find((item) => item.default).default;
         }
     } else if (VERSIONS.V2.includes(openAPIVersion)) {
-        if (Array.isArray(operation.security) && operation.security.find(item => item.default)) {
-            scopes = operation.security.find(item => item.default).default;
+        if (Array.isArray(operation.security) && operation.security.find((item) => item.default)) {
+            scopes = operation.security.find((item) => item.default).default;
         }
     }
     return scopes;
+}
+
+/**
+ * Map the api.operations array to swagger paths like object
+ * @param {Array} operations Operations in API DTO
+ * @returns {Object} Mapped operations object
+ */
+function mapAPIOperations(operations) {
+    const temp = {};
+    for (const operation of operations) {
+        const { target, verb, ...rest } = operation;
+        if (!temp[target]) {
+            temp[target] = {
+                [verb]: rest,
+            };
+        } else {
+            temp[target][verb] = rest;
+        }
+    }
+    return temp;
 }
 
 /**
@@ -171,8 +191,8 @@ function isSelectAll(selectedOperations, operations) {
         if (Object.prototype.hasOwnProperty.call(operations, path)) {
             const verbs = operations[path];
             if (
-                !selectedOperations[path] ||
-                Object.keys(selectedOperations[path]).length !== Object.keys(verbs).length
+                !selectedOperations[path]
+                || Object.keys(selectedOperations[path]).length !== Object.keys(verbs).length
             ) {
                 return false;
             }
@@ -180,4 +200,12 @@ function isSelectAll(selectedOperations, operations) {
     }
     return true;
 }
-export { getTaggedOperations, getAPIProductTaggedOperations, extractPathParameters, getOperationScopes, isSelectAll };
+export {
+    mapAPIOperations,
+    getTaggedOperations,
+    getAPIProductTaggedOperations,
+    extractPathParameters,
+    getOperationScopes,
+    isSelectAll,
+    VERSIONS,
+};

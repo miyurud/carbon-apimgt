@@ -32,6 +32,8 @@ public class APIInfoDTO   {
     private List<String> throttlingPolicies = new ArrayList<>();
     private AdvertiseInfoDTO advertiseInfo = null;
     private APIBusinessInformationDTO businessInformation = null;
+    private Boolean isSubscriptionAvailable = null;
+    private String monetizationLabel = null;
 
   /**
    **/
@@ -258,6 +260,40 @@ public class APIInfoDTO   {
     this.businessInformation = businessInformation;
   }
 
+  /**
+   **/
+  public APIInfoDTO isSubscriptionAvailable(Boolean isSubscriptionAvailable) {
+    this.isSubscriptionAvailable = isSubscriptionAvailable;
+    return this;
+  }
+
+  
+  @ApiModelProperty(example = "false", value = "")
+  @JsonProperty("isSubscriptionAvailable")
+  public Boolean isIsSubscriptionAvailable() {
+    return isSubscriptionAvailable;
+  }
+  public void setIsSubscriptionAvailable(Boolean isSubscriptionAvailable) {
+    this.isSubscriptionAvailable = isSubscriptionAvailable;
+  }
+
+  /**
+   **/
+  public APIInfoDTO monetizationLabel(String monetizationLabel) {
+    this.monetizationLabel = monetizationLabel;
+    return this;
+  }
+
+  
+  @ApiModelProperty(example = "Free", value = "")
+  @JsonProperty("monetizationLabel")
+  public String getMonetizationLabel() {
+    return monetizationLabel;
+  }
+  public void setMonetizationLabel(String monetizationLabel) {
+    this.monetizationLabel = monetizationLabel;
+  }
+
 
   @Override
   public boolean equals(java.lang.Object o) {
@@ -280,12 +316,14 @@ public class APIInfoDTO   {
         Objects.equals(avgRating, apIInfo.avgRating) &&
         Objects.equals(throttlingPolicies, apIInfo.throttlingPolicies) &&
         Objects.equals(advertiseInfo, apIInfo.advertiseInfo) &&
-        Objects.equals(businessInformation, apIInfo.businessInformation);
+        Objects.equals(businessInformation, apIInfo.businessInformation) &&
+        Objects.equals(isSubscriptionAvailable, apIInfo.isSubscriptionAvailable) &&
+        Objects.equals(monetizationLabel, apIInfo.monetizationLabel);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, name, description, context, version, type, provider, lifeCycleStatus, thumbnailUri, avgRating, throttlingPolicies, advertiseInfo, businessInformation);
+    return Objects.hash(id, name, description, context, version, type, provider, lifeCycleStatus, thumbnailUri, avgRating, throttlingPolicies, advertiseInfo, businessInformation, isSubscriptionAvailable, monetizationLabel);
   }
 
   @Override
@@ -306,6 +344,8 @@ public class APIInfoDTO   {
     sb.append("    throttlingPolicies: ").append(toIndentedString(throttlingPolicies)).append("\n");
     sb.append("    advertiseInfo: ").append(toIndentedString(advertiseInfo)).append("\n");
     sb.append("    businessInformation: ").append(toIndentedString(businessInformation)).append("\n");
+    sb.append("    isSubscriptionAvailable: ").append(toIndentedString(isSubscriptionAvailable)).append("\n");
+    sb.append("    monetizationLabel: ").append(toIndentedString(monetizationLabel)).append("\n");
     sb.append("}");
     return sb.toString();
   }

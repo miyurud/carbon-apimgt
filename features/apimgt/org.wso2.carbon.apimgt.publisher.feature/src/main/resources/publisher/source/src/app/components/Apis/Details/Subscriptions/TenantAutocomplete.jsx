@@ -27,7 +27,7 @@ import Chip from '@material-ui/core/Chip';
 import API from 'AppData/api';
 import CONSTS from 'AppData/Constants';
 
-const useStyles = makeStyles(theme => ({
+const useStyles = makeStyles((theme) => ({
     root: {
         flexGrow: 1,
         height: 250,
@@ -97,10 +97,10 @@ renderInput.propTypes = {
  */
 function renderSuggestion(suggestionProps) {
     const {
-        suggestion, index, itemProps, highlightedIndex, selectedItem,
+        suggestion, index, itemProps, highlightedIndex, tenantList,
     } = suggestionProps;
     const isHighlighted = highlightedIndex === index;
-    const isSelected = (selectedItem || '').indexOf(suggestion) > -1;
+    const isSelected = (tenantList || '').indexOf(suggestion) > -1;
 
     return (
         <MenuItem
@@ -124,7 +124,7 @@ renderSuggestion.propTypes = {
         type: PropTypes.string,
         inputType: PropTypes.string,
     }).isRequired,
-    selectedItem: PropTypes.string.isRequired,
+    tenantList: PropTypes.shape([]).isRequired,
     suggestion: PropTypes.string.isRequired,
 };
 
@@ -139,8 +139,7 @@ function getSuggestions(value, suggestions, { showEmpty = false } = {}) {
     return inputLength === 0 && !showEmpty
         ? []
         : suggestions.filter((suggestion) => {
-            const keep =
-          count < 5 && suggestion.slice(0, inputLength).toLowerCase() === inputValue;
+            const keep = count < 15 && suggestion.slice(0, inputLength).toLowerCase() === inputValue;
             if (keep) {
                 count += 1;
             }
@@ -152,19 +151,13 @@ function getSuggestions(value, suggestions, { showEmpty = false } = {}) {
  * Downshift selection component
  */
 function DownshiftMultiple(props) {
-    const { api, setTenantList } = props;
+    const { tenantList, setTenantList } = props;
     const { classes, suggestions } = props;
     const [inputValue, setInputValue] = React.useState('');
-    let specificTenants = [];
-    if (api.subscriptionAvailableTenants !== null) {
-        specificTenants = api.subscriptionAvailableTenants;
-    }
-    const [selectedItem, setSelectedItem] = React.useState([...specificTenants]);
-
 
     function handleKeyDown(event) {
-        if (selectedItem.length && !inputValue.length && event.key === 'Backspace') {
-            setSelectedItem(selectedItem.slice(0, selectedItem.length - 1));
+        if (tenantList.length && !inputValue.length && event.key === 'Backspace') {
+            setTenantList(tenantList.slice(0, tenantList.length - 1));
         }
     }
 
@@ -173,20 +166,18 @@ function DownshiftMultiple(props) {
     }
 
     function handleChange(item) {
-        let newSelectedItem = [...selectedItem];
+        let newSelectedItem = [...tenantList];
         if (newSelectedItem.indexOf(item) === -1) {
             newSelectedItem = [...newSelectedItem, item];
         }
         setInputValue('');
-        setSelectedItem(newSelectedItem);
-
         setTenantList(newSelectedItem);
     }
 
-    const handleDelete = item => () => {
-        const newSelectedItem = [...selectedItem];
+    const handleDelete = (item) => () => {
+        const newSelectedItem = [...tenantList];
         newSelectedItem.splice(newSelectedItem.indexOf(item), 1);
-        setSelectedItem(newSelectedItem);
+        setTenantList(newSelectedItem);
     };
 
 
@@ -195,7 +186,7 @@ function DownshiftMultiple(props) {
             id='downshift-multiple'
             inputValue={inputValue}
             onChange={handleChange}
-            selectedItem={selectedItem}
+            tenantList={tenantList}
         >
             {({
                 getInputProps,
@@ -203,14 +194,14 @@ function DownshiftMultiple(props) {
                 getLabelProps,
                 isOpen,
                 inputValue: inputValue2,
-                selectedItem: selectedItem2,
+                tenantList: tenantList2,
                 highlightedIndex,
             }) => {
                 const {
                     onBlur, onChange, onFocus, ...inputProps
                 } = getInputProps({
                     onKeyDown: handleKeyDown,
-                    placeholder: 'Select multiple tenants',
+                    placeholder: 'Type and select tenants from the suggested list',
                 });
 
                 return (
@@ -221,7 +212,7 @@ function DownshiftMultiple(props) {
                             label: 'Tenants',
                             InputLabelProps: getLabelProps(),
                             InputProps: {
-                                startAdornment: selectedItem.map(item => (
+                                startAdornment: tenantList.map((item) => (
                                     <Chip
                                         key={item}
                                         tabIndex={-1}
@@ -242,14 +233,13 @@ function DownshiftMultiple(props) {
 
                         {isOpen ? (
                             <Paper className={classes.paper} square>
-                                {getSuggestions(inputValue2, suggestions).map((suggestion, index) =>
-                                    renderSuggestion({
-                                        suggestion,
-                                        index,
-                                        itemProps: getItemProps({ item: suggestion }),
-                                        highlightedIndex,
-                                        selectedItem: selectedItem2,
-                                    }))}
+                                {getSuggestions(inputValue2, suggestions).map((suggestion, index) => renderSuggestion({
+                                    suggestion,
+                                    index,
+                                    itemProps: getItemProps({ item: suggestion }),
+                                    highlightedIndex,
+                                    tenantList: tenantList2,
+                                }))}
                             </Paper>
                         ) : null}
                     </div>
@@ -275,6 +265,7 @@ DownshiftMultiple.propTypes = {
     api: PropTypes.shape({
         policies: PropTypes.array,
     }).isRequired,
+    tenantList: PropTypes.shape([]).isRequired,
 };
 
 /**
@@ -283,7 +274,7 @@ DownshiftMultiple.propTypes = {
 export default function IntegrationDownshift(props) {
     const classes = useStyles();
     const [suggestions, setsuggestions] = useState({});
-    const { setTenantList, api } = props;
+    const { setTenantList, api, tenantList } = props;
 
     const restApi = new API();
 
@@ -299,7 +290,13 @@ export default function IntegrationDownshift(props) {
     return (
         <div className={classes.root}>
             <div className={classes.divider} />
-            <DownshiftMultiple classes={classes} suggestions={suggestions} setTenantList={setTenantList} api={api} />
+            <DownshiftMultiple
+                classes={classes}
+                suggestions={suggestions}
+                tenantList={tenantList}
+                setTenantList={setTenantList}
+                api={api}
+            />
             <div className={classes.divider} />
         </div>
     );
@@ -313,4 +310,5 @@ IntegrationDownshift.propTypes = {
     api: PropTypes.shape({
         policies: PropTypes.array,
     }).isRequired,
+    tenantList: PropTypes.shape([]).isRequired,
 };

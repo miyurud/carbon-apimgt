@@ -18,28 +18,39 @@
  */
 
     include("/services/constants.jag");
-    include("/services/jagg.jag");
-    var site = require("/site/public/theme/defaultTheme.js").Configurations.app;
+    var appUtils = require("/services/utils.js");
 
+    var app = require("/site/public/theme/settings.js").Settings.app;
     var utils = Packages.org.wso2.carbon.apimgt.impl.utils.APIUtil;
-    var serverUrl = utils.getServerURL();
+    var log = new Log("Login Callback Endpoint: ");
+
+    var serverUrl = '';
+    var forwarded_for = request.getHeader(app.customUrl.forwardedHeader);
+    if (app.customUrl.enabled && forwarded_for) {
+        serverUrl = "https://" + forwarded_for;
+    } else {
+        serverUrl = utils.getServerURL();
+    }
     var tokenRequestData = {
         "grant_type": "authorization_code",
         "code": request.getParameter("code", "UTF-8"),
-        "redirect_uri": serverUrl + site.context + LOGIN_CALLBACK_URL_SUFFIX
+        "redirect_uri": serverUrl + app.context + LOGIN_CALLBACK_URL_SUFFIX
     };
 
     var SystemApplicationDTO = Packages.org.wso2.carbon.apimgt.impl.dao.SystemApplicationDAO;
     var systemApplicationDAO = new SystemApplicationDTO();
-    var systemApplicationDTO = systemApplicationDAO.getClientCredentialsForApplication("admin_publisher");
-
+    // this is to support migration from admin_publisher to apim_publisher
+    var systemApplicationDTO = systemApplicationDAO.getClientCredentialsForApplication(PUBLISHER_CLIENT_APP_NAME);
+    if (systemApplicationDTO === null) {
+        systemApplicationDTO = systemApplicationDAO.getClientCredentialsForApplication(PUBLISHER_CLIENT_APP_NAME_OLD);
+    }
     var clientId = systemApplicationDTO.getConsumerKey();
     var clientSecret = systemApplicationDTO.getConsumerSecret();
     var Base64 = org.apache.axiom.om.util.Base64;
     var String = Packages.java.lang.String;
     var Integer = Packages.java.lang.Integer;
     var base64encoded = Base64.encode(new String(clientId + ":" + clientSecret).getBytes());
-    var tokenEndpoint = MGT_TRANSPORT + HOST + ":" + getServerPort() + TOKEN_URL_SUFFIX;
+    var tokenEndpoint = appUtils.getLoopbackOrigin() + TOKEN_URL_SUFFIX;
     var result = post(tokenEndpoint, tokenRequestData, {"Authorization": "Basic " + base64encoded});
 
     response.contentType = "application/json";
@@ -68,7 +79,7 @@
     var cookie = {
         'name': 'AM_ACC_TOKEN_DEFAULT_P2',
         'value': accessTokenPart2,
-        'path': site.context + "/",
+        'path': app.context + "/",
         "httpOnly": true,
         "secure": true,
         "maxAge": Integer(tokenResponse.expires_in)
@@ -88,17 +99,17 @@
     cookie = {
         'name': 'AM_REF_TOKEN_DEFAULT_P2',
         'value': refreshTokenPart2,
-        'path': site.context + "/",
+        'path': app.context + "/",
         "httpOnly": true,
         "secure": true,
-        "maxAge": -1
+        "maxAge": 86400 // TODO: Default value a day, need to get this from idn configs ~tmkb
     };
     response.addCookie(cookie);
 
     cookie = {
         'name': 'WSO2_AM_TOKEN_1_Default',
         'value': accessTokenPart1,
-        'path': site.context + "/",
+        'path': app.context + "/",
         "secure": true,
         "maxAge": Integer(tokenResponse.expires_in)
     };
@@ -107,16 +118,16 @@
     cookie = {
         'name': 'WSO2_AM_REFRESH_TOKEN_1_Default',
         'value': refreshTokenPart1,
-        'path': site.context + "/",
+        'path': app.context + "/",
         "secure": true,
-        "maxAge": 86400
+        "maxAge": 86400 // TODO: Default value a day, need to get this from idn configs ~tmkb
     };
     response.addCookie(cookie);
 
     cookie = {
         'name': 'AM_ID_TOKEN_DEFAULT_P2',
         'value': idTokenPart2,
-        'path': site.context + "/services/logout",
+        'path': app.context + "/services/logout",
         "secure": true,
         "maxAge": Integer(tokenResponse.expires_in)
     };
@@ -125,7 +136,7 @@
     cookie = {
         'name': 'AM_ID_TOKEN_DEFAULT_P1',
         'value': idTokenPart1,
-        'path': site.context + "/services/logout",
+        'path': app.context + "/services/logout",
         "secure": true,
         "maxAge": Integer(tokenResponse.expires_in)
     };
@@ -135,12 +146,12 @@
     if (state !== null) {
         state = decodeURIComponent(state);
         if ( state !== '/') {
-            response.sendRedirect(site.context + state);
+            response.sendRedirect(app.context + state);
         } else {
-            response.sendRedirect(site.context + "/apis");
+            response.sendRedirect(app.context);
         }
     } else {
-        response.sendRedirect(site.context + "/apis");
+        response.sendRedirect(app.context);
     }
 
 %>

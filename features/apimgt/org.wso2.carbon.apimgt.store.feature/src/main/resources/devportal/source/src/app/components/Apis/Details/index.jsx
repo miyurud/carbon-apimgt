@@ -38,37 +38,43 @@ import Wizard from './Credentials/Wizard/Wizard';
 const LoadableSwitch = withRouter(Loadable.Map({
     loader: {
         ApiConsole: () =>
-                import(// eslint-disable-line function-paren-newline
+                import(
+                    // eslint-disable-line function-paren-newline
                     /* webpackChunkName: "ApiConsole" */
                     /* webpackPrefetch: true */
                     // eslint-disable-next-line comma-dangle
                     './ApiConsole/ApiConsole'),
         Overview: () =>
-                import(// eslint-disable-line function-paren-newline
+                import(
+                    // eslint-disable-line function-paren-newline
                     /* webpackChunkName: "Overview" */
                     /* webpackPrefetch: true */
                     // eslint-disable-next-line comma-dangle
                     './Overview'),
         Documentation: () =>
-                import(// eslint-disable-line function-paren-newline
+                import(
+                    // eslint-disable-line function-paren-newline
                     /* webpackChunkName: "Documentation" */
                     /* webpackPrefetch: true */
                     // eslint-disable-next-line comma-dangle
                     './Documents/Documentation'),
         Credentials: () =>
-                import(// eslint-disable-line function-paren-newline
+                import(
+                    // eslint-disable-line function-paren-newline
                     /* webpackChunkName: "Credentials" */
                     /* webpackPrefetch: true */
                     // eslint-disable-next-line comma-dangle
                     './Credentials/Credentials'),
         Comments: () =>
-                import(// eslint-disable-line function-paren-newline
+                import(
+                    // eslint-disable-line function-paren-newline
                     /* webpackChunkName: "Comments" */
                     /* webpackPrefetch: true */
                     // eslint-disable-next-line comma-dangle
                     './Comments/Comments'),
         Sdk: () =>
-                import(// eslint-disable-line function-paren-newline
+                import(
+                    // eslint-disable-line function-paren-newline
                     /* webpackChunkName: "Sdk" */
                     /* webpackPrefetch: true */
                     // eslint-disable-next-line comma-dangle
@@ -89,14 +95,10 @@ const LoadableSwitch = withRouter(Loadable.Map({
 
         return (
             <Switch>
-                <Redirect exact from='/apis/:apiUuid' to={redirectURL} />
+                <Redirect exact from={`/apis/${apiUuid}`} to={redirectURL} />
                 <Route path='/apis/:apiUuid/overview' render={() => <Overview {...props} />} />
                 <Route path='/apis/:apiUuid/documents' component={Documentation} />
-                <Route
-                    exact
-                    path='/apis/:apiUuid/credentials/wizard'
-                    component={Wizard}
-                />
+                <Route exact path='/apis/:apiUuid/credentials/wizard' component={Wizard} />
                 {!advertised && <Route path='/apis/:apiUuid/comments' component={Comments} />}
                 {!advertised && <Route path='/apis/:apiUuid/credentials' component={Credentials} />}
                 {!advertised && <Route path='/apis/:apiUuid/test' component={ApiConsole} />}
@@ -337,12 +339,16 @@ class Details extends React.Component {
         const {
             classes, theme, intl, match,
         } = this.props;
+        const user = AuthManager.getUser();
         const { apiUuid } = match.params;
         const { api, notFound } = this.state;
         const {
             custom: {
                 leftMenu: {
                     rootIconSize, rootIconTextVisible, rootIconVisible, position,
+                },
+                apiDetailPages: {
+                    showCredentials, showComments, showTryout, showDocuments, showSdks,
                 },
             },
         } = theme;
@@ -380,21 +386,66 @@ class Details extends React.Component {
                             )}
                         </Link>
                     )}
-                    <LeftMenuItem text='overview' route='overview' to={pathPrefix + 'overview'} />
+                    <LeftMenuItem
+                        text={<FormattedMessage id='Apis.Details.index.overview' defaultMessage='Overview' />}
+                        route='overview'
+                        iconText='overview'
+                        to={pathPrefix + 'overview'}
+                    />
                     {!api.advertiseInfo.advertised && (
                         <React.Fragment>
-                            <LeftMenuItem text='credentials' route='credentials' to={pathPrefix + 'credentials'} />
-                            <LeftMenuItem text='comments' route='comments' to={pathPrefix + 'comments'} />
-                            {api.type !== 'WS' && <LeftMenuItem text='test' route='test' to={pathPrefix + 'test'} />}
+                            {user && showCredentials && (
+                                <React.Fragment>
+                                    <LeftMenuItem
+                                        text={
+                                            <FormattedMessage
+                                                id='Apis.Details.index.credentials'
+                                                defaultMessage='Credentials'
+                                            />
+                                        }
+                                        route='credentials'
+                                        iconText='credentials'
+                                        to={pathPrefix + 'credentials'}
+                                    />
+                                </React.Fragment>
+                            )}
+                            {showComments && (
+                                <LeftMenuItem
+                                    text={
+                                        <FormattedMessage id='Apis.Details.index.comments' defaultMessage='Comments' />
+                                    }
+                                    route='comments'
+                                    iconText='comments'
+                                    to={pathPrefix + 'comments'}
+                                />
+                            )}
+                            {api.type !== 'WS' && showSdks && (
+                                <LeftMenuItem
+                                    text={<FormattedMessage id='Apis.Details.index.try.out' defaultMessage='Try out' />}
+                                    route='test'
+                                    iconText='test'
+                                    to={pathPrefix + 'test'}
+                                />
+                            )}
                         </React.Fragment>
                     )}
-                    <LeftMenuItem text='Documentation' route='documents' to={pathPrefix + 'documents'} />
-                    {!api.advertiseInfo.advertised && api.type !== 'WS' && (
-                        <LeftMenuItem text='SDK' route='sdk' to={pathPrefix + 'sdk'} />
+                    {showDocuments && <LeftMenuItem
+                        text={<FormattedMessage id='Apis.Details.index.documentation' defaultMessage='Documentation' />}
+                        route='documents'
+                        iconText='docs'
+                        to={pathPrefix + 'documents'}
+                    />}
+                    {!api.advertiseInfo.advertised && api.type !== 'WS' && showSdks && (
+                        <LeftMenuItem
+                            text={<FormattedMessage id='Apis.Details.index.sdk' defaultMessage='SDKs' />}
+                            route='sdk'
+                            iconText='sdk'
+                            to={pathPrefix + 'sdk'}
+                        />
                     )}
                 </div>
                 <div className={classes.content}>
-                    <InfoBar apiId={apiUuid} innerRef={node => (this.infoBar = node)} intl={intl} />
+                    <InfoBar apiId={apiUuid} innerRef={node => (this.infoBar = node)} intl={intl} {...this.props} />
                     <div
                         className={classNames(
                             { [classes.contentLoader]: position === 'horizontal' },

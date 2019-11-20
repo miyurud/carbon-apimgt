@@ -16,12 +16,13 @@
  * under the License.
  */
 
-import React, { useReducer, useEffect, useState, useCallback, useMemo } from 'react';
+import React, {
+    useReducer, useEffect, useState, useCallback, useMemo,
+} from 'react';
 import Grid from '@material-ui/core/Grid';
 import Paper from '@material-ui/core/Paper';
 import { useAPI } from 'AppComponents/Apis/Details/components/ApiContext';
 import cloneDeep from 'lodash.clonedeep';
-import Swagger from 'swagger-client';
 import isEmpty from 'lodash/isEmpty';
 import Alert from 'AppComponents/Shared/Alert';
 import Banner from 'AppComponents/Shared/Banner';
@@ -35,7 +36,7 @@ import SpecErrors from './components/SpecErrors';
 import AddOperation from './components/AddOperation';
 import GoToDefinitionLink from './components/GoToDefinitionLink';
 import APIRateLimiting from './components/APIRateLimiting';
-import { extractPathParameters, isSelectAll } from './operationUtils';
+import { extractPathParameters, isSelectAll, mapAPIOperations } from './operationUtils';
 import OperationsSelector from './components/OperationsSelector';
 import SaveOperations from './components/SaveOperations';
 
@@ -59,10 +60,35 @@ export default function Resources(props) {
     const [api, updateAPI] = useAPI();
     const [pageError, setPageError] = useState(false);
     const [operationRateLimits, setOperationRateLimits] = useState([]);
-    const [specErrors, setSpecErrors] = useState([]);
+    const [specErrors] = useState([]);
     const [markedOperations, setSelectedOperation] = useState({});
     const [openAPISpec, setOpenAPISpec] = useState({});
     const [apiThrottlingPolicy, setApiThrottlingPolicy] = useState(api.apiThrottlingPolicy);
+
+    /**
+     *
+     *
+     * @param {*} currentPolicies
+     * @param {*} policyAction
+     * @returns
+     */
+    function resourcePoliciesReducer(currentPolicies, policyAction) {
+        const { action, data } = policyAction;
+        const { value } = data || {}; // target, verb,
+        let nextResourcePolicies = { ...currentPolicies };
+        switch (action) {
+            case 'init':
+                nextResourcePolicies = value;
+                break;
+            case 'update':
+                nextResourcePolicies[value.resourcePath][value.httpVerb][data.direction] = value;
+                break;
+            default:
+                break;
+        }
+        return nextResourcePolicies;
+    }
+    const [resourcePolicies, resourcePoliciesDispatcher] = useReducer(resourcePoliciesReducer, null);
 
     /**
      *
@@ -92,16 +118,31 @@ export default function Resources(props) {
             case 'authType':
                 updatedOperation['x-auth-type'] = value ? 'Any' : 'None';
                 break;
+            case 'parameter':
+                if (!updatedOperation.parameters) {
+                    updatedOperation.parameters = [value];
+                } else {
+                    updatedOperation.parameters.push(value);
+                }
+                break;
+            case 'requestBody':
+                updatedOperation[action] = value;
+                break;
+            case 'deleteParameter':
+                updatedOperation.parameters = updatedOperation.parameters.filter((parameter) => {
+                    return !(parameter.in === value.in && parameter.name === value.name);
+                });
+                break;
             case 'throttlingPolicy':
                 updatedOperation['x-throttling-tier'] = value;
                 break;
             case 'scopes':
                 if (!updatedOperation.security) {
                     updatedOperation.security = [{ default: [] }];
-                } else if (!updatedOperation.security.find(item => item.default)) {
+                } else if (!updatedOperation.security.find((item) => item.default)) {
                     updatedOperation.security.push({ default: [] });
                 }
-                updatedOperation.security.find(item => item.default).default = value;
+                updatedOperation.security.find((item) => item.default).default = value;
                 break;
             case 'add': {
                 const parameters = extractPathParameters(data.target, openAPISpec);
@@ -120,6 +161,7 @@ export default function Resources(props) {
                         // use else condition because continue is not allowed by es-lint rules
                         addedOperations[data.target][currentVerb] = {
                             'x-wso2-new': true, // This is to identify unsaved newly added operations, Remove when PUT
+                            'x-auth-type': 'Application & Application User', // By default security is enabled
                             responses: { 200: { description: 'ok' } },
                             parameters,
                         };
@@ -162,12 +204,19 @@ export default function Resources(props) {
         });
     }
     const onMarkAsDelete = useCallback(onOperationSelectM, [setSelectedOperation]);
+
+    // can't depends on API id because we need to consider the changes in operations in api object
     // memoized (https://reactjs.org/docs/hooks-reference.html#usememo) to improve pref,
     // localized to inject local apiThrottlingPolicy data
-    const localApi = useMemo(() => ({ id: api.id, apiThrottlingPolicy, scopes: api.scopes }), [
-        api,
-        apiThrottlingPolicy,
-    ]);
+    const localAPI = useMemo(
+        () => ({
+            id: api.id,
+            apiThrottlingPolicy,
+            scopes: api.scopes,
+            operations: api.isAPIProduct() ? {} : mapAPIOperations(api.operations),
+        }),
+        [api, apiThrottlingPolicy],
+    );
     /**
      *
      *
@@ -175,13 +224,15 @@ export default function Resources(props) {
      * @returns
      */
     function resolveAndUpdateSpec(rawSpec) {
-        return Swagger.resolve({ spec: rawSpec }).then(({ spec, errors }) => {
-            const value = spec;
-            delete value.$$normalized;
-            operationsDispatcher({ action: 'init', data: value.paths });
-            setOpenAPISpec(value);
-            setSpecErrors(errors);
-        });
+        // return Swagger.resolve({ spec: rawSpec, allowMetaPatches: false }).then(({ spec, errors }) => {
+        //     const value = spec;
+        //     delete value.$$normalized;
+        //     operationsDispatcher({ action: 'init', data: value.paths });
+        //     setOpenAPISpec(value);
+        //     setSpecErrors(errors);
+        // });
+        operationsDispatcher({ action: 'init', data: rawSpec.paths });
+        setOpenAPISpec(rawSpec);
     }
 
     /**
@@ -193,11 +244,15 @@ export default function Resources(props) {
     function updateSwagger(spec) {
         return api
             .updateSwagger(spec)
-            .then(response => resolveAndUpdateSpec(response.body))
+            .then((response) => resolveAndUpdateSpec(response.body))
             .then(updateAPI)
             .catch((error) => {
                 console.error(error);
-                Alert.error('Error while updating the definition');
+                if (error.response) {
+                    setPageError(error.response.body);
+                } else {
+                    Alert.error('Error while updating the definition');
+                }
             });
     }
 
@@ -216,7 +271,7 @@ export default function Resources(props) {
         switch (type) {
             case 'save':
                 if (isSelectAll(markedOperations, copyOfOperations)) {
-                    const message = "Can't delete all the operations, Please keep at least one operation.";
+                    const message = 'At least one operation is required for the API';
                     Alert.warning(message);
                     return Promise.reject(new Error(message));
                 }
@@ -263,8 +318,45 @@ export default function Resources(props) {
                     Alert.error(error.response.body.description);
                     setPageError(error.response.body);
                 }
+                console.error(error);
             });
-
+        if (api.isSOAPToREST()) {
+            const promisedInPolicies = api.getResourcePolicies('in');
+            const promisedOutPolicies = api.getResourcePolicies('out');
+            Promise.all([promisedInPolicies, promisedOutPolicies])
+                .then(([inPolicies, outPolicies]) => {
+                    const mappedPolicies = {};
+                    for (const policy of inPolicies.body.list) {
+                        const { resourcePath, httpVerb } = policy;
+                        if (!mappedPolicies[resourcePath]) {
+                            mappedPolicies[resourcePath] = {
+                                [httpVerb]: { in: policy },
+                            };
+                        } else {
+                            mappedPolicies[resourcePath][httpVerb] = { in: policy };
+                        }
+                    }
+                    for (const policy of outPolicies.body.list) {
+                        const { resourcePath, httpVerb } = policy;
+                        if (!mappedPolicies[resourcePath]) {
+                            mappedPolicies[resourcePath] = {
+                                [httpVerb]: { out: policy },
+                            };
+                        } else {
+                            mappedPolicies[resourcePath][httpVerb].out = policy;
+                        }
+                    }
+                    resourcePoliciesDispatcher({ action: 'init', data: { value: mappedPolicies } });
+                })
+                .catch((error) => {
+                    if (error.response) {
+                        Alert.error(error.response.body.description);
+                        setPageError(error.response.body);
+                    }
+                    setPageError(error.message);
+                    console.error(error);
+                });
+        }
         // Fetch API level throttling policies only when the page get mounted for the first time `componentDidMount`
         API.policies('api').then((response) => {
             setOperationRateLimits(response.body.list);
@@ -272,13 +364,9 @@ export default function Resources(props) {
         // TODO: need to handle the error cases through catch ~tmkb
     }, [api.id]);
 
-    if (pageError) {
-        return <Banner type='error' message={pageError} />;
-    }
-
     // Note: Make sure not to use any hooks after/within this condition , because it returns conditionally
     // If you do so, You will probably get `Rendered more hooks than during the previous render.` exception
-    if (isEmpty(openAPISpec)) {
+    if (!pageError && isEmpty(openAPISpec)) {
         return (
             <Grid container direction='row' justify='center' alignItems='center'>
                 <Grid item>
@@ -289,6 +377,11 @@ export default function Resources(props) {
     }
     return (
         <Grid container direction='row' justify='flex-start' spacing={2} alignItems='stretch'>
+            {pageError && (
+                <Grid item md={12}>
+                    <Banner onClose={() => setPageError(null)} disableActions type='error' message={pageError} />
+                </Grid>
+            )}
             {!disableRateLimiting && (
                 <Grid item md={12}>
                     <APIRateLimiting
@@ -300,7 +393,7 @@ export default function Resources(props) {
                 </Grid>
             )}
             {!isRestricted(['apim:api_create'], api) && !disableAddOperation && (
-                <Grid item md={12}>
+                <Grid item md={12} xs={12}>
                     <AddOperation operationsDispatcher={operationsDispatcher} />
                 </Grid>
             )}
@@ -331,15 +424,23 @@ export default function Resources(props) {
                                                     target={target}
                                                     verb={verb}
                                                     highlight
+                                                    resourcePoliciesDispatcher={resourcePoliciesDispatcher}
+                                                    resourcePolicy={
+                                                        resourcePolicies
+                                                        && resourcePolicies[target.slice(1)]
+                                                        && resourcePolicies[target.slice(1)][verb]
+                                                    }
                                                     operationsDispatcher={operationsDispatcher}
                                                     spec={openAPISpec}
                                                     operation={operation}
                                                     operationRateLimits={operationRateLimits}
-                                                    api={localApi}
+                                                    api={localAPI}
                                                     markAsDelete={Boolean(markedOperations[target]
                                                         && markedOperations[target][verb])}
                                                     onMarkAsDelete={onMarkAsDelete}
-                                                    disableUpdate={disableUpdate}
+                                                    disableUpdate={
+                                                        disableUpdate || isRestricted(['apim:api_create'], api)
+                                                    }
                                                     disableMultiSelect={disableMultiSelect}
                                                     {...operationProps}
                                                 />

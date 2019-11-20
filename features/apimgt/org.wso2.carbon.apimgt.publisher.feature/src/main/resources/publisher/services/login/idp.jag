@@ -18,26 +18,35 @@
  */
 
     var log = new Log("Services login DCR request");
-    var site = require("/site/public/theme/defaultTheme.js").Configurations.app;
-    include("/services/constants.jag");
-    include("/services/jagg.jag");
-
+    var app = require("/site/public/theme/settings.js").Settings.app;
+    var appUtils = require("/services/utils.js");
     var utils = Packages.org.wso2.carbon.apimgt.impl.utils.APIUtil;
-    var serverUrl = utils.getServerURL();
-    var settingsAPIUrl = serverUrl + SETTINGS_REST_API_URL_SUFFIX;
+    include("/services/constants.jag");
+
+    var serverUrl = '';
+    var forwarded_for = request.getHeader(app.customUrl.forwardedHeader);
+    if (app.customUrl.enabled && forwarded_for) {
+        serverUrl = "https://" + forwarded_for;
+    } else {
+        serverUrl = utils.getServerURL();
+    }
+    var settingsAPIUrl = appUtils.getLoopbackOrigin() + SETTINGS_REST_API_URL_SUFFIX;
     var settingsResponse = get(settingsAPIUrl, {}, "json");
 
-    var dcrUrl = MGT_TRANSPORT + HOST + ":" + getServerPort() + DCR_URL_SUFFIX;
+    var dcrUrl = appUtils.getLoopbackOrigin() + DCR_URL_SUFFIX;
     var authorizeEndpoint = serverUrl + AUTHORIZE_ENDPOINT_SUFFIX;
-    var loginCallbackUrl = serverUrl + site.context + LOGIN_CALLBACK_URL_SUFFIX;
-    var logoutCallbackUrl = serverUrl + site.context + LOGOUT_CALLBACK_URL_SUFFIX;
+    var loginCallbackUrl = serverUrl + app.context + LOGIN_CALLBACK_URL_SUFFIX;
+    var logoutCallbackUrl = serverUrl + app.context + LOGOUT_CALLBACK_URL_SUFFIX;
     var callbackUrl = "regexp=(" + loginCallbackUrl + "|" + logoutCallbackUrl + ")";
     var scopes = settingsResponse.data.scopes.join(" ");
     var referer = request.getHeader("Referer");
     var state = "";
     // get the pathname from query param 'referrer'
     if (referer !== null) {
-        state = referer.replace(/(https?:\/\/.*):(\d*)\/?(publisher)/g, '');
+        var context = app.context.charAt(0) === '/' ? app.context.substring(1) : app.context;
+        var hostnamePattern = "(https?:\/\/.*):?(\\d*)\/?(" + context + ")";
+        var re = new RegExp(hostnamePattern);
+        state = encodeURI(referer.replace(re, ''));
     }
 
     var authorizationHeader = "Basic " + utils.getBase64EncodedAdminCredentials();
@@ -45,7 +54,9 @@
     var systemApplicationDAO = new SystemApplicationDAO();
     var clientId;
     systemApplicationDTO = systemApplicationDAO.getClientCredentialsForApplication(PUBLISHER_CLIENT_APP_NAME);
-
+    if (systemApplicationDTO === null) {
+        systemApplicationDTO = systemApplicationDAO.getClientCredentialsForApplication(PUBLISHER_CLIENT_APP_NAME_OLD);
+    }
     var lock = SystemApplicationDAO.getLock();
     if (systemApplicationDTO !== null) {
         clientId = systemApplicationDTO.getConsumerKey();
@@ -53,6 +64,9 @@
         try {
             lock.acquire();
             systemApplicationDTO = systemApplicationDAO.getClientCredentialsForApplication(PUBLISHER_CLIENT_APP_NAME);
+            if (systemApplicationDTO === null) {
+                systemApplicationDTO = systemApplicationDAO.getClientCredentialsForApplication(PUBLISHER_CLIENT_APP_NAME_OLD);
+            }
             if (systemApplicationDTO == null) {
                 var dcrRequestData = {
                     "callbackUrl": callbackUrl,
@@ -86,7 +100,7 @@
     var cookie = {
         'name': 'CLIENT_ID',
         'value': clientId,
-        'path': site.context + "/",
+        'path': app.context + "/",
         "httpOnly": false,
         "secure": true,
         "maxAge": -1

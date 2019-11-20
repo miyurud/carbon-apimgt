@@ -14,14 +14,16 @@
  * limitations under the License.
  */
 
-import React, { useContext, useEffect, useState, useReducer } from 'react';
+import React, {
+    useContext, useEffect, useState, useReducer,
+} from 'react';
 import { Grid, CircularProgress } from '@material-ui/core';
 import { withStyles } from '@material-ui/core/styles';
 import Typography from '@material-ui/core/Typography';
 import { FormattedMessage, injectIntl } from 'react-intl';
 import PropTypes from 'prop-types';
 import Button from '@material-ui/core/Button';
-import { Link } from 'react-router-dom';
+import { Link, withRouter } from 'react-router-dom';
 import NewEndpointCreate from 'AppComponents/Apis/Details/Endpoints/NewEndpointCreate';
 import { APIContext } from 'AppComponents/Apis/Details/components/ApiContext';
 import cloneDeep from 'lodash.clonedeep';
@@ -29,7 +31,7 @@ import { isRestricted } from 'AppData/AuthManager';
 import EndpointOverview from './EndpointOverview';
 import { createEndpointConfig, getEndpointTemplateByType } from './endpointUtils';
 
-const styles = theme => ({
+const styles = (theme) => ({
     endpointTypesWrapper: {
         display: 'flex',
         alignItems: 'center',
@@ -52,10 +54,10 @@ const styles = theme => ({
         color: theme.palette.error.main,
     },
     errorMessageContainer: {
-        marginTop: theme.spacing(),
+        marginTop: theme.spacing(1),
     },
     implSelectRadio: {
-        padding: theme.spacing() / 2,
+        padding: theme.spacing(1) / 2,
     },
 });
 
@@ -67,7 +69,7 @@ const defaultSwagger = { paths: {} };
  * @returns {any} HTML representation.
  */
 function Endpoints(props) {
-    const { classes, intl } = props;
+    const { classes, intl, history } = props;
     const { api, updateAPI } = useContext(APIContext);
     const [swagger, setSwagger] = useState(defaultSwagger);
     const [endpointValidity, setAPIEndpointsValid] = useState({ isValid: true, message: '' });
@@ -118,8 +120,8 @@ function Endpoints(props) {
             }
             case 'endpoint_type': { // set endpoint type
                 const config = getEndpointTemplateByType(
-                    value,
-                    tmpEndpointConfig.endpoint_type === 'address',
+                    value.category,
+                    value.endpointType === 'address',
                     tmpEndpointConfig,
                 );
                 return { ...initState, endpointConfig: { ...config } };
@@ -138,22 +140,31 @@ function Endpoints(props) {
             }
             case 'select_endpoint_type': {
                 const { endpointImplementationType, endpointConfig } = value;
-                return { ...initState, endpointConfig, endpointImplementationType };
+                let { endpointSecurity } = initState;
+                if (endpointSecurity && (endpointSecurity.username === '')) {
+                    endpointSecurity = null;
+                }
+                return {
+                    ...initState,
+                    endpointConfig,
+                    endpointImplementationType,
+                    endpointSecurity: null,
+                };
             }
             default: {
                 return initState;
             }
         }
     };
-    const [apiObject, apiDispatcher] = useReducer(apiReducer, cloneDeep(api.toJSON()));
+    const [apiObject, apiDispatcher] = useReducer(apiReducer, api.toJSON());
 
 
     /**
      * Method to update the api.
      *
-     * @param {function} updateFunc The api update function.
+     * @param {boolean} isRedirect Used for dynamic endpoints to redirect to the runtime config page.
      */
-    const saveAPI = () => {
+    const saveAPI = (isRedirect) => {
         const { endpointConfig, endpointImplementationType, endpointSecurity } = apiObject;
         setUpdating(true);
         if (endpointImplementationType === 'INLINE') {
@@ -163,10 +174,16 @@ function Endpoints(props) {
                 updateAPI({ endpointConfig, endpointImplementationType, endpointSecurity });
             }).finally(() => {
                 setUpdating(false);
+                if (isRedirect) {
+                    history.push('/apis/' + api.id + '/runtime-configuration');
+                }
             });
         } else {
             updateAPI(apiObject).finally(() => {
                 setUpdating(false);
+                if (isRedirect) {
+                    history.push('/apis/' + api.id + '/runtime-configuration');
+                }
             });
         }
     };
@@ -212,8 +229,9 @@ function Endpoints(props) {
              *  production/ sandbox endpoint [0] must be present.
              * */
             if (endpointConfig.production_endpoints && endpointConfig.production_endpoints.length > 0) {
-                if (!endpointConfig.production_endpoints[0].url ||
-                    (endpointConfig.production_endpoints[0].url && endpointConfig.production_endpoints[0].url === '')) {
+                if (!endpointConfig.production_endpoints[0].url
+                    || (endpointConfig.production_endpoints[0].url
+                        && endpointConfig.production_endpoints[0].url === '')) {
                     return {
                         isValid: false,
                         message: intl.formatMessage({
@@ -224,8 +242,8 @@ function Endpoints(props) {
                 }
             }
             if (endpointConfig.sandbox_endpoints && endpointConfig.sandbox_endpoints.length > 0) {
-                if (!endpointConfig.sandbox_endpoints[0].url ||
-                    (endpointConfig.sandbox_endpoints[0].url && endpointConfig.sandbox_endpoints[0].url === '')) {
+                if (!endpointConfig.sandbox_endpoints[0].url
+                    || (endpointConfig.sandbox_endpoints[0].url && endpointConfig.sandbox_endpoints[0].url === '')) {
                     return {
                         isValid: false,
                         message: intl.formatMessage({
@@ -257,8 +275,8 @@ function Endpoints(props) {
             } else if (!endpointConfig.sandbox_endpoints && !endpointConfig.production_endpoints) {
                 isValidEndpoint = false;
             } else {
-                isValidEndpoint = endpointConfig.sandbox_endpoints.url !== '' ||
-                        endpointConfig.production_endpoints.url !== '';
+                isValidEndpoint = endpointConfig.sandbox_endpoints.url !== ''
+                        || endpointConfig.production_endpoints.url !== '';
             }
             return !isValidEndpoint ? {
                 isValid: false,
@@ -288,6 +306,9 @@ function Endpoints(props) {
         setAPIEndpointsValid(validate(apiObject.endpointImplementationType));
     }, [apiObject]);
 
+    const saveAndRedirect = () => {
+        saveAPI(true);
+    };
     /**
      * Method to update the swagger object.
      *
@@ -308,93 +329,92 @@ function Endpoints(props) {
     };
 
     return (
-        <React.Fragment>
+        <>
             {/* Since the api is set to the state in component did mount, check both the api and the apiObject. */}
-            {(api.endpointConfig === null && apiObject.endpointConfig === null) ?
-                <NewEndpointCreate generateEndpointConfig={generateEndpointConfig} /> :
-                <div className={classes.root}>
-                    <Grid container spacing={16} className={classes.titleGrid}>
-                        <Grid item>
-                            <Typography variant='h4' align='left' gutterBottom>
-                                <FormattedMessage
-                                    id='Apis.Details.Endpoints.Endpoints.endpoints.header'
-                                    defaultMessage='Endpoints'
-                                />
-                            </Typography>
-                        </Grid>
-                    </Grid>
-                    <div>
-                        <Grid container>
-                            <Grid item xs={12} className={classes.endpointsContainer}>
-                                <EndpointOverview
-                                    swaggerDef={swagger}
-                                    updateSwagger={changeSwagger}
-                                    api={apiObject}
-                                    onChangeAPI={apiDispatcher}
-                                    endpointsDispatcher={apiDispatcher}
-                                />
-                            </Grid>
-                        </Grid>
-                        {
-                            endpointValidity.isValid ?
-                                <div /> :
-                                <Grid item className={classes.errorMessageContainer}>
-                                    <Typography className={classes.endpointValidityMessage}>
-                                        {endpointValidity.message}
-                                    </Typography>
-                                </Grid>
-                        }
-                        <Grid
-                            container
-                            direction='row'
-                            alignItems='flex-start'
-                            spacing={1}
-                            className={classes.buttonSection}
-                        >
-                            <Grid item>
-                                <Button
-                                    disabled={isUpdating || !endpointValidity.isValid ||
-                                    isRestricted(['apim:api_create'], api)}
-                                    type='submit'
-                                    variant='contained'
-                                    color='primary'
-                                    onClick={() => saveAPI()}
-                                >
-                                    <FormattedMessage
-                                        id='Apis.Details.Endpoints.Endpoints.save'
-                                        defaultMessage='Save'
+            {(api.endpointConfig === null && apiObject.endpointConfig === null)
+                ? <NewEndpointCreate generateEndpointConfig={generateEndpointConfig} apiType={apiObject.type} />
+                : (
+                    <div className={classes.root}>
+                        <Typography variant='h4' align='left' gutterBottom>
+                            <FormattedMessage
+                                id='Apis.Details.Endpoints.Endpoints.endpoints.header'
+                                defaultMessage='Endpoints'
+                            />
+                        </Typography>
+                        <div>
+                            <Grid container>
+                                <Grid item xs={12} className={classes.endpointsContainer}>
+                                    <EndpointOverview
+                                        swaggerDef={swagger}
+                                        updateSwagger={changeSwagger}
+                                        api={apiObject}
+                                        onChangeAPI={apiDispatcher}
+                                        endpointsDispatcher={apiDispatcher}
+                                        saveAndRedirect={saveAndRedirect}
                                     />
-                                    {isUpdating && <CircularProgress size={24} />}
-                                </Button>
+                                </Grid>
                             </Grid>
-                            <Grid item>
-                                <Link to={'/apis/' + api.id + '/overview'}>
-                                    <Button>
+                            {
+                                endpointValidity.isValid
+                                    ? <div />
+                                    : (
+                                        <Grid item className={classes.errorMessageContainer}>
+                                            <Typography className={classes.endpointValidityMessage}>
+                                                {endpointValidity.message}
+                                            </Typography>
+                                        </Grid>
+                                    )
+                            }
+                            <Grid
+                                container
+                                direction='row'
+                                alignItems='flex-start'
+                                spacing={1}
+                                className={classes.buttonSection}
+                            >
+                                <Grid item>
+                                    <Button
+                                        disabled={isUpdating || !endpointValidity.isValid
+                                    || isRestricted(['apim:api_create'], api)}
+                                        type='submit'
+                                        variant='contained'
+                                        color='primary'
+                                        onClick={() => saveAPI()}
+                                    >
                                         <FormattedMessage
-                                            id='Apis.Details.Endpoints.Endpoints.cancel'
-                                            defaultMessage='Cancel'
+                                            id='Apis.Details.Endpoints.Endpoints.save'
+                                            defaultMessage='Save'
                                         />
+                                        {isUpdating && <CircularProgress size={24} />}
                                     </Button>
-                                </Link>
-                            </Grid>
-                            {isRestricted(['apim:api_create'], api)
+                                </Grid>
+                                <Grid item>
+                                    <Link to={'/apis/' + api.id + '/overview'}>
+                                        <Button>
+                                            <FormattedMessage
+                                                id='Apis.Details.Endpoints.Endpoints.cancel'
+                                                defaultMessage='Cancel'
+                                            />
+                                        </Button>
+                                    </Link>
+                                </Grid>
+                                {isRestricted(['apim:api_create'], api)
                                 && (
                                     <Grid item>
                                         <Typography variant='body2' color='primary'>
                                             <FormattedMessage
                                                 id='Apis.Details.Endpoints.Endpoints.update.not.allowed'
-                                                defaultMessage={'*You are not authorized to update Endpoints of' +
-                                                ' the API due to insufficient permissions'}
+                                                defaultMessage={'*You are not authorized to update endpoints of'
+                                                + ' the API due to insufficient permissions'}
                                             />
                                         </Typography>
                                     </Grid>
-                                )
-                            }
-                        </Grid>
+                                )}
+                            </Grid>
+                        </div>
                     </div>
-                </div>
-            }
-        </React.Fragment>
+                )}
+        </>
 
     );
 }
@@ -408,6 +428,7 @@ Endpoints.propTypes = {
     }).isRequired,
     api: PropTypes.shape({}).isRequired,
     intl: PropTypes.shape({}).isRequired,
+    history: PropTypes.shape({}).isRequired,
 };
 
-export default injectIntl(withStyles(styles)(Endpoints));
+export default withRouter(injectIntl(withStyles(styles)(Endpoints)));

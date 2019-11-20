@@ -90,6 +90,8 @@ function LeftMenuItem(props) {
         const test2 = new RegExp('/' + routeToCheck + '/', 'g');
         if (pathname.match(test1) || pathname.match(test2)) {
             setSelected(true);
+        } else if(pathname.split('/').length <= 3 && routeToCheck === 'overview'){
+            setSelected(true);
         } else {
             setSelected(false);
         }
@@ -135,7 +137,7 @@ function LeftMenuItem(props) {
                         strokeColor={strokeColor}
                         width={iconSize}
                         height={iconSize}
-                        icon={props.text}
+                        icon={props.iconText}
                         className={classNames(
                             classes.leftLInk,
                             {
@@ -162,6 +164,7 @@ function LeftMenuItem(props) {
 }
 LeftMenuItem.defaultProps = {
     route: null,
+    iconText: null,
 };
 LeftMenuItem.propTypes = {
     classes: PropTypes.shape({}).isRequired,
@@ -170,6 +173,7 @@ LeftMenuItem.propTypes = {
     text: PropTypes.string.isRequired,
     to: PropTypes.string.isRequired,
     route: PropTypes.string,
+    iconText: PropTypes.string,
     history: PropTypes.shape({
         location: PropTypes.string.isRequired,
     }).isRequired,

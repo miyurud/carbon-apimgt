@@ -17,6 +17,7 @@
 */
 package org.wso2.carbon.apimgt.api;
 
+import org.json.simple.JSONObject;
 import org.wso2.carbon.apimgt.api.dto.CertificateInformationDTO;
 import org.wso2.carbon.apimgt.api.dto.CertificateMetadataDTO;
 import org.wso2.carbon.apimgt.api.dto.ClientCertificateDTO;
@@ -743,6 +744,8 @@ public interface APIProvider extends APIManager {
      */
     void configureMonetizationInAPIArtifact(API api) throws APIManagementException;
 
+    void configureMonetizationInAPIProductArtifact(APIProduct apiProduct) throws APIManagementException;
+
     /**
      * This method is used to get the implementation class for monetization
      *
@@ -1177,11 +1180,11 @@ public interface APIProvider extends APIManager {
 
     /**
      * Create API product
-     * @param product product object containing details of the prouct
-     * @return UUID of the api product
+     * @param product product object containing details of the product
+     * @return Map of APIs as keys and respective APIProductResources as values
      * @throws APIManagementException exception
      */
-    void addAPIProductWithoutPublishingToGateway(APIProduct product) throws APIManagementException;
+    Map<API, List<APIProductResource>> addAPIProductWithoutPublishingToGateway(APIProduct product) throws APIManagementException;
 
     /**
      * Publish API Product to Gateway
@@ -1202,10 +1205,20 @@ public interface APIProvider extends APIManager {
     /**
      * Update API Product
      * @param product
+     * @return Map of APIs as keys and respective APIProductResources as values
      * @throws APIManagementException
      */
-    void updateAPIProduct(APIProduct product) throws APIManagementException, FaultGatewaysException;
+    Map<API, List<APIProductResource>> updateAPIProduct(APIProduct product) throws APIManagementException, FaultGatewaysException;
 
+    /**
+     * Update API Products local entry. This is to be called whenever the swagger definition of an dependent API gets
+     * updated
+     *
+     * @param product
+     * @throws APIManagementException
+     * @throws FaultGatewaysException
+     */
+    void updateLocalEntry(APIProduct product) throws FaultGatewaysException;
 
     List<ResourcePath> getResourcePathsOfAPI(APIIdentifier apiId) throws APIManagementException;
 
@@ -1265,4 +1278,13 @@ public interface APIProvider extends APIManager {
      * @throws APIManagementException if API Manager core level exception occurred
      */
     void deleteWorkflowTask(APIIdentifier apiIdentifier) throws APIManagementException;
+
+    /**
+     * This method returns the security audit properties
+     *
+     * @param userId user id
+     * @return JSONObject object with security audit properties
+     * @throws APIManagementException
+     */
+    JSONObject getSecurityAuditAttributesFromConfig(String userId) throws APIManagementException;
 }

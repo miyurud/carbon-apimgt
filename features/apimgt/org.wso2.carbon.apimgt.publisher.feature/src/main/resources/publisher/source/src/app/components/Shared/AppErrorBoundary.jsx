@@ -22,16 +22,17 @@ import Typography from '@material-ui/core/Typography';
 import PropTypes from 'prop-types';
 import Footer from 'AppComponents/Base/Footer/Footer';
 import { FormattedMessage } from 'react-intl';
+import Configurations from 'Config';
 
-const styles = theme => ({
+const styles = (theme) => ({
     appBar: {
         zIndex: theme.zIndex.modal + 1,
         position: 'relative',
         background: theme.palette.background.appBar,
     },
     typoRoot: {
-        marginLeft: theme.spacing.unit * 3,
-        marginRight: theme.spacing.unit * 3,
+        marginLeft: theme.spacing(3),
+        marginRight: theme.spacing(3),
         textTransform: 'capitalize',
     },
     brandLink: {
@@ -64,10 +65,10 @@ const styles = theme => ({
     errorTitle: {
         display: 'flex',
         alignItems: 'center',
-        paddingTop: theme.spacing.unit * 2,
-        paddingBottom: theme.spacing.unit * 2,
+        paddingTop: theme.spacing(2),
+        paddingBottom: theme.spacing(2),
         '& h2': {
-            paddingLeft: theme.spacing.unit * 2,
+            paddingLeft: theme.spacing(2),
         },
     },
     link: {
@@ -119,12 +120,12 @@ class AppErrorBoundary extends React.Component {
         };
         if (hasError) {
             return (
-                <React.Fragment>
+                <>
                     <AppBar className={classes.appBar} position='fixed'>
                         <Toolbar className={classes.toolbar}>
                             <div className={classes.errorDisplay} style={{ width: '100%' }}>
                                 <div className={classes.errorDisplayContent}>
-                                    <a href='/publisher'>
+                                    <a href={Configurations.app.context}>
                                         <img
                                             src={theme.custom.logo}
                                             alt={theme.custom.title}
@@ -139,7 +140,7 @@ class AppErrorBoundary extends React.Component {
                     <div className={classes.errorDisplay}>
                         <div className={classes.errorDisplayContent}>
                             <div className={classes.errorTitle}>
-                                <img src='/publisher/site/public/images/robo.png' alt='OOPS' />
+                                <img src={`${Configurations.app.context}/site/public/images/robo.png`} alt='OOPS' />
                                 <Typography variant='h2' gutterBottom>
                                     <FormattedMessage
                                         id='Apis.Shared.AppErrorBoundary.something.went.wrong'
@@ -147,7 +148,7 @@ class AppErrorBoundary extends React.Component {
                                     />
                                 </Typography>
                             </div>
-                            <a href='/publisher/apis/'>
+                            <a href={`${Configurations.app.context}/apis/`}>
                                 <h3 className={classes.link}>API Listing</h3>
                             </a>
                         </div>
@@ -164,7 +165,7 @@ class AppErrorBoundary extends React.Component {
                         </div>
                     </div>
                     <Footer />
-                </React.Fragment>
+                </>
             );
         } else {
             return children;

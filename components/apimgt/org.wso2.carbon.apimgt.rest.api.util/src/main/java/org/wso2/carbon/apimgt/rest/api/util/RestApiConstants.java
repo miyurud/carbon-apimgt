@@ -217,6 +217,11 @@ public final class RestApiConstants {
     public static final String PUT = "PUT";
     public static final String DELETE = "DELETE";
 
+    public static final String FREE = "FREE";
+    public static final String COMMERCIAL = "COMMERCIAL";
+    public static final String PAID = "PAID";
+    public static final String FREEMIUM = "FREEMIUM";
+
     //System property set at server startup
     public static final String MIGRATION_MODE = "migrationMode";
 
@@ -247,4 +252,6 @@ public final class RestApiConstants {
     public static final String ERROR_TOKEN_INVALID = "Provided access token is invalid";
     public static final String ERROR_TOKEN_EXPIRED = "Access token is expired";
     public static final String ERROR_SCOPE_VALIDATION_FAILED = "You cannot access API as scope validation failed";
+
+    public static final String DEFAULT_ENVIRONMENT = "Production and Sandbox";
 }

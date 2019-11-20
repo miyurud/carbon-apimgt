@@ -16,25 +16,27 @@
  *  under the License.
  */
 import React from 'react';
-import { Icon, IconButton, withStyles, Typography } from '@material-ui/core';
+import { Icon, IconButton, withStyles } from '@material-ui/core';
 import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 import { FormattedMessage } from 'react-intl';
 
-const styles = theme => ({
+const styles = (theme) => ({
     settingsIconbtn: {
         color: theme.palette.getContrastText(theme.palette.background.appBar),
         fontSize: theme.typography.fontSize,
+        textTransform: 'uppercase',
+        fontWeight: 'bold',
     },
     settinsIcon: {
-        marginRight: theme.spacing(),
+        marginRight: theme.spacing(1),
     },
 });
 
 const SettingsButton = (props) => {
     const { classes } = props;
     return (
-        <React.Fragment>
+        <>
             <Link to='/settings'>
                 <IconButton
                     id='settings-btn'
@@ -46,15 +48,13 @@ const SettingsButton = (props) => {
                     <Icon className={classes.settinsIcon}>
                         settings
                     </Icon>
-                    <Typography>
-                        <FormattedMessage
-                            id='Apis.Base.Header.settings.SettingsButton.settings.caption'
-                            defaultMessage='Settings'
-                        />
-                    </Typography>
+                    <FormattedMessage
+                        id='Apis.Base.Header.settings.SettingsButton.settings.caption'
+                        defaultMessage='Settings'
+                    />
                 </IconButton>
             </Link>
-        </React.Fragment>
+        </>
     );
 };
 

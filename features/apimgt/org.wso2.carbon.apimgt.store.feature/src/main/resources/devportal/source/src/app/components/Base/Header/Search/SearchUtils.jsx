@@ -31,6 +31,7 @@ import APIsIcon from '@material-ui/icons/SettingsApplicationsOutlined';
 import DocumentsIcon from '@material-ui/icons/LibraryBooks';
 import NativeSelect from '@material-ui/core/NativeSelect';
 import { FormattedMessage } from 'react-intl';
+import CircularProgress from '@material-ui/core/CircularProgress';
 
 import API from 'AppData/api';
 /* Utility methods defined here are described in
@@ -46,45 +47,57 @@ function renderInput(inputProps) {
     const {
         classes, ref, isLoading, onDropDownChange, ...other
     } = inputProps;
+    let loadingAdorment = null;
+    if (isLoading) {
+        loadingAdorment = (
+            <InputAdornment position='end'>
+                <CircularProgress />
+            </InputAdornment>
+        );
+    }
     return (
         <React.Fragment>
-            <NativeSelect
-                onChange={onDropDownChange}
-                className={classes.selectRoot}
-            >
-                <FormattedMessage
-                    id='Base.Header.headersearch.SearchUtils.lcState.all'
-                    defaultMessage='All'
+            <div className={classes.searchBoxWrap}>
+                <NativeSelect
+                    onChange={onDropDownChange}
+                    className={classes.selectRoot}
                 >
-                    {placeholder => <option value=''>{placeholder}</option>}
-                </FormattedMessage>
-                <FormattedMessage
-                    id='Base.Header.headersearch.SearchUtils.lcState.published'
-                    defaultMessage='Production'
-                >
-                    {placeholder => <option value='PUBLISHED'>{placeholder}</option>}
-                </FormattedMessage>
-                <FormattedMessage
-                    id='Base.Header.headersearch.SearchUtils.lcState.prototyped'
-                    defaultMessage='Prototyped'
-                >
-                    {placeholder => <option value='PROTOTYPED'>{placeholder}</option>}
-                </FormattedMessage>
-            </NativeSelect>
-            <TextField
-                id='searchQuery'
-                InputProps={{
-                    inputRef: ref,
-                    className: classes.input,
-                    classes: { focused: classes.inputFocused },
-                    startAdornment: (
-                        <InputAdornment position='start'>
-                            <SearchOutlined />
-                        </InputAdornment>
-                    ),
-                    ...other,
-                }}
-            />
+                    <FormattedMessage
+                        id='Base.Header.headersearch.SearchUtils.lcState.all'
+                        defaultMessage='All'
+                    >
+                        {placeholder => <option value=''>{placeholder}</option>}
+                    </FormattedMessage>
+                    <FormattedMessage
+                        id='Base.Header.headersearch.SearchUtils.lcState.published'
+                        defaultMessage='Production'
+                    >
+                        {placeholder => <option value='PUBLISHED'>{placeholder}</option>}
+                    </FormattedMessage>
+                    <FormattedMessage
+                        id='Base.Header.headersearch.SearchUtils.lcState.prototyped'
+                        defaultMessage='Prototyped'
+                    >
+                        {placeholder => <option value='PROTOTYPED'>{placeholder}</option>}
+                    </FormattedMessage>
+                </NativeSelect>
+                <TextField
+                    id='searchQuery'
+                    classes={{ root: classes.inputRoot }}
+                    InputProps={{
+                        inputRef: ref,
+                        className: classes.input,
+                        classes: { focused: classes.inputFocused },
+                        startAdornment: (
+                            <InputAdornment position='start'>
+                                <SearchOutlined />
+                            </InputAdornment>
+                        ),
+                        endAdornment: loadingAdorment,
+                        ...other,
+                    }}
+                />
+            </div>
         </React.Fragment>
     );
 }

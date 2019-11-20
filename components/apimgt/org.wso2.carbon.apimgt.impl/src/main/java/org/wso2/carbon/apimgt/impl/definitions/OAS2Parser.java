@@ -42,6 +42,7 @@ import io.swagger.models.parameters.RefParameter;
 import io.swagger.models.properties.RefProperty;
 import io.swagger.parser.SwaggerParser;
 import io.swagger.parser.util.SwaggerDeserializationResult;
+import io.swagger.util.Yaml;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -436,6 +437,29 @@ public class OAS2Parser extends APIDefinition {
     }
 
     /**
+     * Remove x-wso2-examples from all the paths from the swagger.
+     *
+     * @param swaggerString Swagger as String
+     */
+    public String removeExamplesFromSwagger(String swaggerString) throws APIManagementException {
+        try {
+            SwaggerParser swaggerParser = new SwaggerParser();
+            Swagger swagger = swaggerParser.parse(swaggerString);
+            swagger.getPaths().values().forEach(path -> {
+                path.getOperations().forEach(operation -> {
+                    if (operation.getVendorExtensions().keySet().contains(APIConstants.SWAGGER_X_EXAMPLES)) {
+                        operation.getVendorExtensions().remove(APIConstants.SWAGGER_X_EXAMPLES);
+                    }
+                });
+            });
+            return Yaml.pretty().writeValueAsString(swagger);
+        } catch (JsonProcessingException e) {
+            throw new APIManagementException("Error while removing examples from OpenAPI definition", e,
+                    ExceptionCodes.ERROR_REMOVING_EXAMPLES);
+        }
+    }
+
+    /**
      * Update OAS definition for store
      *
      * @param api            API
@@ -779,23 +803,25 @@ public class OAS2Parser extends APIDefinition {
             for (Map.Entry<HttpMethod, Operation> entry : operationMap.entrySet()) {
                 Operation operation = entry.getValue();
                 Map<String, Object> extensions = operation.getVendorExtensions();
-                // remove mediation extension
-                if (extensions.containsKey(APIConstants.SWAGGER_X_MEDIATION_SCRIPT)) {
-                    extensions.remove(APIConstants.SWAGGER_X_MEDIATION_SCRIPT);
-                }
-                // set x-scope value to security definition if it not there.
-                if (extensions.containsKey(APIConstants.SWAGGER_X_WSO2_SCOPES)) {
-                    String scope = (String) extensions.get(APIConstants.SWAGGER_X_WSO2_SCOPES);
-                    List<Map<String, List<String>>> security = operation.getSecurity();
-                    if (security == null) {
-                        security = new ArrayList<>();
-                        operation.setSecurity(security);
+                if (extensions != null) {
+                    // remove mediation extension
+                    if (extensions.containsKey(APIConstants.SWAGGER_X_MEDIATION_SCRIPT)) {
+                        extensions.remove(APIConstants.SWAGGER_X_MEDIATION_SCRIPT);
                     }
-                    for (Map<String, List<String>> requirement : security) {
-                        if (requirement.get(APIConstants.SWAGGER_APIM_DEFAULT_SECURITY) == null || !requirement
-                                .get(APIConstants.SWAGGER_APIM_DEFAULT_SECURITY).contains(scope)) {
-                            requirement
-                                    .put(APIConstants.SWAGGER_APIM_DEFAULT_SECURITY, Collections.singletonList(scope));
+                    // set x-scope value to security definition if it not there.
+                    if (extensions.containsKey(APIConstants.SWAGGER_X_WSO2_SCOPES)) {
+                        String scope = (String) extensions.get(APIConstants.SWAGGER_X_WSO2_SCOPES);
+                        List<Map<String, List<String>>> security = operation.getSecurity();
+                        if (security == null) {
+                            security = new ArrayList<>();
+                            operation.setSecurity(security);
+                        }
+                        for (Map<String, List<String>> requirement : security) {
+                            if (requirement.get(APIConstants.SWAGGER_APIM_DEFAULT_SECURITY) == null || !requirement
+                                    .get(APIConstants.SWAGGER_APIM_DEFAULT_SECURITY).contains(scope)) {
+                                requirement
+                                        .put(APIConstants.SWAGGER_APIM_DEFAULT_SECURITY, Collections.singletonList(scope));
+                            }
                         }
                     }
                 }
@@ -810,7 +836,7 @@ public class OAS2Parser extends APIDefinition {
      * @return Swagger
      * @throws APIManagementException
      */
-    private Swagger getSwagger(String oasDefinition) throws APIManagementException {
+    Swagger getSwagger(String oasDefinition) {
         SwaggerParser parser = new SwaggerParser();
         SwaggerDeserializationResult parseAttemptForV2 = parser.readWithInfo(oasDefinition);
         if (CollectionUtils.isNotEmpty(parseAttemptForV2.getMessages())) {

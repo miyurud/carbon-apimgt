@@ -25,6 +25,7 @@ import Grid from '@material-ui/core/Grid/Grid';
 import { FormattedMessage, injectIntl } from 'react-intl';
 import CONSTS from 'AppData/Constants';
 import classNames from 'classnames';
+import InlineMessage from 'AppComponents/Shared/InlineMessage';
 import Comment from './Comment';
 import CommentAdd from './CommentAdd';
 import API from '../../../../data/api';
@@ -64,6 +65,11 @@ const styles = theme => ({
     },
     loadMoreLink: {
         textDecoration: 'underline',
+    },
+    genericMessageWrapper: {
+        marginTop: theme.spacing(2),
+        marginBottom: theme.spacing(2),
+        marginRight: theme.spacing(3),
     },
 });
 
@@ -206,6 +212,38 @@ class Comments extends Component {
     }
 
     /**
+     * Method to compare the tenant domains
+     * @param {*} advertiseInfo advertiseInfo object for the API
+     * @param {*} currentUser current logged in user
+     * @returns {boolean} true or false
+     */
+    isCrossTenant(apiProvider, currentUser) {
+        let tenantDomain = null;
+        let loggedInUserDomain = null;
+        const loggedInUser = currentUser.name;
+
+        if (apiProvider.includes('@')) {
+            const splitDomain = apiProvider.split('@');
+            tenantDomain = splitDomain[splitDomain.length - 1];
+        } else {
+            tenantDomain = 'carbon.super';
+        }
+
+        if (loggedInUser.includes('@')) {
+            const splitLoggedInUser = loggedInUser.split('@');
+            loggedInUserDomain = splitLoggedInUser[splitLoggedInUser.length - 1];
+        } else {
+            loggedInUserDomain = 'carbon.super';
+        }
+
+        if (tenantDomain !== loggedInUserDomain) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
      * Render method of the component
      * @returns {React.Component} Comment html component
      * @memberof Comments
@@ -231,7 +269,8 @@ class Comments extends Component {
                                 </Typography>
                             </div>
                         )}
-                        {!showLatest && AuthManager.getUser() && (
+                        {!showLatest && AuthManager.getUser() &&
+                        !this.isCrossTenant(api.provider, AuthManager.getUser()) && (
                             <Paper className={classes.paper}>
                                 <CommentAdd
                                     apiId={api.id}
@@ -242,6 +281,24 @@ class Comments extends Component {
                                 />
                             </Paper>
                         )}
+                        {totalComments === 0 && !isOverview &&
+                            <div className={classes.genericMessageWrapper}>
+                                <InlineMessage type='info' className={classes.dialogContainer}>
+                                    <Typography variant='h5' component='h3'>
+                                        <FormattedMessage
+                                            id='Apis.Details.Comments.no.comments'
+                                            defaultMessage='No Comments Yet'
+                                        />
+                                    </Typography>
+                                    <Typography component='p'>
+                                        <FormattedMessage
+                                            id='Apis.Details.Comments.no.comments.content'
+                                            defaultMessage='No comments available for this API yet'
+                                        />
+                                    </Typography>
+                                </InlineMessage>
+                            </div>
+                        }
                         <Comment
                             comments={comments}
                             apiId={api.id}

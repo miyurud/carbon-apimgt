@@ -1,8 +1,7 @@
 import React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import PropTypes from 'prop-types';
-import { PageNotFound } from 'AppComponents/Base/Errors/';
-// import PermissionFormWrapper from '../Permissions/Permission';
+import ResourceNotFound from 'AppComponents/Base/Errors/ResourceNotFound';
 
 /**
  *
@@ -23,10 +22,10 @@ const APIDetailsRoutes = ({ api, apiDetailPages }) => {
                 <Route
                     key={pathName}
                     path={`/apis/:apiUUID/${pathName}`}
-                    render={routeProps => <PageComponent api={api} {...routeProps} />}
+                    render={(routeProps) => <PageComponent api={api} {...routeProps} />}
                 />
             ))}
-            <Route component={PageNotFound} />
+            <Route component={ResourceNotFound} />
         </Switch>
     );
 };

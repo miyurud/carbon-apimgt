@@ -23,10 +23,10 @@ import Tooltip from '@material-ui/core/Tooltip';
 import FileCopy from '@material-ui/icons/FileCopy';
 import Typography from '@material-ui/core/Typography';
 import TextField from '@material-ui/core/TextField';
-import Icon from '@material-ui/core/Icon';
 import FormHelperText from '@material-ui/core/FormHelperText';
 import { FormattedMessage } from 'react-intl';
 import InlineMessage from '../InlineMessage';
+import ViewSecret from './ViewSecret';
 /**
  *
  *
@@ -57,6 +57,10 @@ const styles = theme => ({
     epWrapper: {
         display: 'flex',
         marginTop: 20,
+    },
+    secretWrapper: {
+        display: 'flex',
+        marginBottom: 20,
     },
     prodLabel: {
         lineHeight: '30px',
@@ -121,10 +125,17 @@ class ViewToken extends React.Component {
      * @memberof ViewToken
      */
     render() {
-        const { classes, token } = this.props;
+        const {
+            classes, token, consumerSecret,
+        } = this.props;
         const { tokenCopied } = this.state;
         return (
             <div className={classes.root}>
+                {consumerSecret && (
+                    <div className={classes.secretWrapper}>
+                        <ViewSecret secret={{ consumerSecret }} />
+                    </div>
+                )}
                 <InlineMessage type='warn'>
                     <Typography variant='h5' component='h3'>
                         {(token.isOauth) && <FormattedMessage
@@ -134,15 +145,16 @@ class ViewToken extends React.Component {
                         }
                         {(!token.isOauth) && <FormattedMessage
                             id='Shared.AppsAndKeys.ViewToken.please.copy.apikey'
-                            defaultMessage='Please Copy the Api Key'
+                            defaultMessage='Please Copy the API Key'
                         />
                         }
                     </Typography>
                     <Typography component='p'>
                         <FormattedMessage
                             id='Shared.AppsAndKeys.ViewToken.please.copy.help'
-                            defaultMessage={`Please copy this generated token value as it will be displayed only for 
-                            the current browser session. ( After a page refresh, the token is not visible in the UI )`}
+                            defaultMessage={'Please copy this generated token value as it will be displayed only for'
+                            + ' the current browser session. '
+                            + '( The token will not be visible in the UI after the page is refreshed. )'}
                         />
                     </Typography>
                 </InlineMessage>
@@ -209,6 +221,10 @@ class ViewToken extends React.Component {
     }
 }
 
+ViewToken.defaultProps = {
+    consumerSecret: null,
+};
+
 ViewToken.propTypes = {
     classes: PropTypes.shape({}).isRequired,
     token: PropTypes.shape({
@@ -216,6 +232,7 @@ ViewToken.propTypes = {
         validityTime: PropTypes.number.isRequired,
         tokenScopes: PropTypes.array.isRequired,
     }).isRequired,
+    consumerSecret: PropTypes.string,
 };
 
 export default withStyles(styles)(ViewToken);

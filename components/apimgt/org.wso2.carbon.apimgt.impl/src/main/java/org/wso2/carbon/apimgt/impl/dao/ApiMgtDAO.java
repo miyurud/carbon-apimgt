@@ -78,7 +78,6 @@ import org.wso2.carbon.apimgt.api.model.policy.SubscriptionPolicy;
 import org.wso2.carbon.apimgt.api.model.botDataAPI.BotDetectionData;
 import org.wso2.carbon.apimgt.impl.APIConstants;
 import org.wso2.carbon.apimgt.impl.APIManagerConfiguration;
-import org.wso2.carbon.apimgt.impl.APIType;
 import org.wso2.carbon.apimgt.impl.ThrottlePolicyConstants;
 import org.wso2.carbon.apimgt.impl.dao.constants.SQLConstants;
 import org.wso2.carbon.apimgt.impl.dto.APIInfoDTO;
@@ -131,7 +130,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -603,7 +601,6 @@ public class ApiMgtDAO {
         PreparedStatement ps = null;
         try {
             conn = APIMgtDBUtil.getConnection();
-
             String query = SQLConstants.GET_MONETIZATION_USAGE_PUBLISH_INFO;
             ps = conn.prepareStatement(query);
             rs = ps.executeQuery();
@@ -638,7 +635,6 @@ public class ApiMgtDAO {
         try {
             conn = APIMgtDBUtil.getConnection();
             conn.setAutoCommit(false);
-
             String query = SQLConstants.ADD_MONETIZATION_USAGE_PUBLISH_INFO;
             ps = conn.prepareStatement(query);
 
@@ -678,7 +674,6 @@ public class ApiMgtDAO {
         try {
             conn = APIMgtDBUtil.getConnection();
             conn.setAutoCommit(false);
-
             String query = SQLConstants.UPDATE_MONETIZATION_USAGE_PUBLISH_INFO;
             ps = conn.prepareStatement(query);
 
@@ -788,7 +783,6 @@ public class ApiMgtDAO {
                 identifier = apiTypeWrapper.getApi().getId();
                 id = getAPIID(apiTypeWrapper.getApi().getId(), conn);
             } else  {
-                checkDuplicateQuery = SQLConstants.CHECK_EXISTING_SUBSCRIPTION_PRODUCT_SQL;
                 identifier = apiTypeWrapper.getApiProduct().getId();
                 id = apiTypeWrapper.getApiProduct().getProductId();
             }
@@ -819,11 +813,7 @@ public class ApiMgtDAO {
 
                 } else if (APIConstants.SubscriptionStatus.UNBLOCKED.equals(subStatus) && APIConstants
                         .SubscriptionCreatedStatus.UN_SUBSCRIBE.equals(subCreationStatus)) {
-                    if(isProduct) {
-                        deleteSubscriptionByApiProductIDAndAppID(id, applicationId, conn);
-                    } else {
-                        deleteSubscriptionByApiIDAndAppID(id, applicationId, conn);
-                    }
+                    deleteSubscriptionByApiIDAndAppID(id, applicationId, conn);
                 } else if (APIConstants.SubscriptionStatus.BLOCKED.equals(subStatus) || APIConstants
                         .SubscriptionStatus.PROD_ONLY_BLOCKED.equals(subStatus)) {
                     log.error("Subscription to API/API Prouct " + apiTypeWrapper.getName() + " through application " +
@@ -838,9 +828,6 @@ public class ApiMgtDAO {
 
             //This query to update the AM_SUBSCRIPTION table
             String sqlQuery = SQLConstants.ADD_SUBSCRIPTION_SQL;
-            if(isProduct) {
-                sqlQuery = SQLConstants.ADD_PRODUCT_SUBSCRIPTION_SQL;
-            }
 
             //Adding data to the AM_SUBSCRIPTION table
             //ps = conn.prepareStatement(sqlQuery, Statement.RETURN_GENERATED_KEYS);
@@ -912,7 +899,6 @@ public class ApiMgtDAO {
                 id = getAPIID((APIIdentifier) identifier, conn);
             } else if (identifier instanceof APIProductIdentifier) {
                 id = ((APIProductIdentifier) identifier).getProductId();
-                subscriptionUUIDQuery = SQLConstants.GET_SUBSCRIPTION_UUID_PRODUCT_SQL;
             }
 
             ps = conn.prepareStatement(subscriptionUUIDQuery);
@@ -1104,19 +1090,18 @@ public class ApiMgtDAO {
             if (resultSet.next()) {
                 int applicationId = resultSet.getInt("APPLICATION_ID");
                 Application application = getLightweightApplicationById(applicationId);
-                if(!StringUtils.isEmpty(resultSet.getString("API_NAME"))) {
-                    APIIdentifier apiIdentifier = new APIIdentifier(APIUtil.replaceEmailDomain(resultSet.getString
-                            ("API_PROVIDER")), resultSet.getString("API_NAME"), resultSet.getString("API_VERSION"));
+                if (APIConstants.API_PRODUCT.equals(resultSet.getString("API_TYPE"))) {
+                    APIProductIdentifier apiProductIdentifier = new APIProductIdentifier(
+                            APIUtil.replaceEmailDomain(resultSet.getString("API_PROVIDER")),
+                            resultSet.getString("API_NAME"), resultSet.getString("API_VERSION"));
+                    apiProductIdentifier.setProductId(resultSet.getInt("API_ID"));
+                    subscribedAPI = new SubscribedAPI(application.getSubscriber(), apiProductIdentifier);
+                } else {
+                    APIIdentifier apiIdentifier = new APIIdentifier(
+                            APIUtil.replaceEmailDomain(resultSet.getString("API_PROVIDER")),
+                            resultSet.getString("API_NAME"), resultSet.getString("API_VERSION"));
                     subscribedAPI = new SubscribedAPI(application.getSubscriber(), apiIdentifier);
                 }
-                if(!StringUtils.isEmpty(resultSet.getString("API_PRODUCT_NAME"))) {
-                    APIProductIdentifier apiProductIdentifier = new APIProductIdentifier(
-                            APIUtil.replaceEmailDomain(resultSet.getString("API_PRODUCT_PROVIDER")),
-                            resultSet.getString("API_PRODUCT_NAME"), resultSet.getString("API_PRODUCT_VERSION"));
-                    apiProductIdentifier.setProductId(resultSet.getInt("API_PRODUCT_ID"));
-                    subscribedAPI = new SubscribedAPI(application.getSubscriber(), apiProductIdentifier);
-                }
-
                 subscribedAPI.setSubscriptionId(resultSet.getInt("SUBSCRIPTION_ID"));
                 subscribedAPI.setSubStatus(resultSet.getString("SUB_STATUS"));
                 subscribedAPI.setSubCreatedStatus(resultSet.getString("SUBS_CREATE_STATE"));
@@ -1156,17 +1141,18 @@ public class ApiMgtDAO {
 
                 int applicationId = resultSet.getInt("APPLICATION_ID");
                 Application application = getApplicationById(applicationId);
-                if(!StringUtils.isEmpty(resultSet.getString("API_NAME"))) {
-                    APIIdentifier apiIdentifier = new APIIdentifier(APIUtil.replaceEmailDomain(resultSet.getString
-                            ("API_PROVIDER")), resultSet.getString("API_NAME"), resultSet.getString("API_VERSION"));
-                    subscribedAPI = new SubscribedAPI(application.getSubscriber(), apiIdentifier);
-                }
-                if(!StringUtils.isEmpty(resultSet.getString("API_PRODUCT_NAME"))) {
+                
+                if (APIConstants.API_PRODUCT.equals(resultSet.getString("API_TYPE"))) {
                     APIProductIdentifier apiProductIdentifier = new APIProductIdentifier(
-                            APIUtil.replaceEmailDomain(resultSet.getString("API_PRODUCT_PROVIDER")),
-                            resultSet.getString("API_PRODUCT_NAME"), resultSet.getString("API_PRODUCT_VERSION"));
-                    apiProductIdentifier.setProductId(resultSet.getInt("API_PRODUCT_ID"));
+                            APIUtil.replaceEmailDomain(resultSet.getString("API_PROVIDER")),
+                            resultSet.getString("API_NAME"), resultSet.getString("API_VERSION"));
+                    apiProductIdentifier.setProductId(resultSet.getInt("API_ID"));
                     subscribedAPI = new SubscribedAPI(application.getSubscriber(), apiProductIdentifier);
+                } else {
+                    APIIdentifier apiIdentifier = new APIIdentifier(
+                            APIUtil.replaceEmailDomain(resultSet.getString("API_PROVIDER")),
+                            resultSet.getString("API_NAME"), resultSet.getString("API_VERSION"));
+                    subscribedAPI = new SubscribedAPI(application.getSubscriber(), apiIdentifier);
                 }
                 
                 subscribedAPI.setUUID(resultSet.getString("UUID"));
@@ -1473,42 +1459,67 @@ public class ApiMgtDAO {
 
     public Set<Scope> getScopesForApplicationSubscription(Subscriber subscriber, int applicationId)
             throws APIManagementException {
+        PreparedStatement getIncludedApisInProduct = null;
+        PreparedStatement getSubscribedApisAndProducts = null;
+        ResultSet resultSet = null;
+        ResultSet resultSet1 = null;
         HashMap<String, Scope> scopeHashMap = new HashMap<>();
+        Set<Integer> apiIdSet = new HashSet<>();
         int tenantId = APIUtil.getTenantId(subscriber.getName());
 
         try (Connection conn = APIMgtDBUtil.getConnection()) {
-            String sqlQueryforGetSubscribedApis = SQLConstants.GET_SUBSCRIBED_API_IDs_BY_APP_ID_SQL;
-            String sqlQuery = SQLConstants.GET_SCOPE_BY_SUBSCRIBED_API_PREFIX + sqlQueryforGetSubscribedApis +
-                    SQLConstants.GET_SCOPE_BY_SUBSCRIBED_ID_SUFFIX;
-
-            if (conn.getMetaData().getDriverName().contains("Oracle")) {
-                sqlQuery = SQLConstants.GET_SCOPE_BY_SUBSCRIBED_ID_ORACLE_SQL + sqlQueryforGetSubscribedApis +
-                        SQLConstants.GET_SCOPE_BY_SUBSCRIBED_ID_SUFFIX;
+            String sqlQueryForGetSubscribedApis = SQLConstants.GET_SUBSCRIBED_API_IDs_BY_APP_ID_SQL;
+            getSubscribedApisAndProducts = conn.prepareStatement(sqlQueryForGetSubscribedApis);
+            getSubscribedApisAndProducts.setInt(1, tenantId);
+            getSubscribedApisAndProducts.setInt(2, applicationId);
+            resultSet = getSubscribedApisAndProducts.executeQuery();
+            while (resultSet.next()) {
+                int apiId = resultSet.getInt("API_ID");
+                String getIncludedApisInProductQuery = SQLConstants.GET_INCLUDED_APIS_IN_PRODUCT_SQL;
+                getIncludedApisInProduct = conn.prepareStatement(getIncludedApisInProductQuery);
+                getIncludedApisInProduct.setInt(1, apiId);
+                resultSet1 = getIncludedApisInProduct.executeQuery();
+                while (resultSet1.next()) {
+                    int includedApiId = resultSet1.getInt("API_ID");
+                    apiIdSet.add(includedApiId);
+                }
+                apiIdSet.add(apiId);
             }
-            try (PreparedStatement statement = conn.prepareStatement(sqlQuery)) {
-                statement.setInt(1, tenantId);
-                statement.setInt(2, applicationId);
-                try (ResultSet resultSet = statement.executeQuery()) {
-                    while (resultSet.next()) {
-                        Scope scope;
-                        String scopeKey = resultSet.getString(1);
-                        if (scopeHashMap.containsKey(scopeKey)) {
-                            // scope already exists append roles.
-                            scope = scopeHashMap.get(scopeKey);
-                            scope.setRoles(scope.getRoles().concat("," + resultSet.getString(4)).trim());
-                        } else {
-                            scope = new Scope();
-                            scope.setKey(scopeKey);
-                            scope.setName(resultSet.getString(2));
-                            scope.setDescription(resultSet.getString(3));
-                            scope.setRoles(resultSet.getString(4).trim());
+            if (!apiIdSet.isEmpty()) {
+                String apiIdList = StringUtils.join(apiIdSet, ", ");
+                String sqlQuery = SQLConstants.GET_SCOPE_BY_SUBSCRIBED_API_PREFIX + apiIdList
+                        + SQLConstants.GET_SCOPE_BY_SUBSCRIBED_ID_SUFFIX;
+
+                if (conn.getMetaData().getDriverName().contains("Oracle")) {
+                    sqlQuery = SQLConstants.GET_SCOPE_BY_SUBSCRIBED_ID_ORACLE_SQL + apiIdList
+                            + SQLConstants.GET_SCOPE_BY_SUBSCRIBED_ID_SUFFIX;
+                }
+                try (PreparedStatement statement = conn.prepareStatement(sqlQuery)) {
+                    try (ResultSet finalResultSet = statement.executeQuery()) {
+                        while (finalResultSet.next()) {
+                            Scope scope;
+                            String scopeKey = finalResultSet.getString(1);
+                            if (scopeHashMap.containsKey(scopeKey)) {
+                                // scope already exists append roles.
+                                scope = scopeHashMap.get(scopeKey);
+                                scope.setRoles(scope.getRoles().concat("," + finalResultSet.getString(4)).trim());
+                            } else {
+                                scope = new Scope();
+                                scope.setKey(scopeKey);
+                                scope.setName(finalResultSet.getString(2));
+                                scope.setDescription(finalResultSet.getString(3));
+                                scope.setRoles(finalResultSet.getString(4).trim());
+                            }
+                            scopeHashMap.put(scopeKey, scope);
                         }
-                        scopeHashMap.put(scopeKey, scope);
                     }
                 }
             }
         } catch (SQLException e) {
             handleException("Failed to retrieve scopes for application subscription ", e);
+        } finally {
+            APIMgtDBUtil.closeAllConnections(getSubscribedApisAndProducts, null, resultSet);
+            APIMgtDBUtil.closeAllConnections(getIncludedApisInProduct, null, resultSet1);
         }
         return populateScopeSet(scopeHashMap);
     }
@@ -1690,9 +1701,7 @@ public class ApiMgtDAO {
             throws APIManagementException {
         Set<SubscribedAPI> subscribedAPIs = new LinkedHashSet<>();
         String sqlQuery =
-                appendSubscriptionQueryWhereClause(groupingId, SQLConstants.GET_PAGINATED_SUBSCRIBED_APIS_SQL)
-                + " UNION " +
-                appendSubscriptionQueryWhereClause(groupingId, SQLConstants.GET_PAGINATED_SUBSCRIBED_API_PRODUCTS_SQL);
+                appendSubscriptionQueryWhereClause(groupingId, SQLConstants.GET_PAGINATED_SUBSCRIBED_APIS_SQL);
 
         try (Connection connection = APIMgtDBUtil.getConnection();
              PreparedStatement ps = connection.prepareStatement(sqlQuery);
@@ -1702,17 +1711,16 @@ public class ApiMgtDAO {
                 if (index >= startSubIndex && index < endSubIndex) {
                     String apiType = result.getString("TYPE");
 
-                    if (APIType.API.toString().equals(apiType)) {
-                        APIIdentifier identifier = new APIIdentifier(APIUtil.replaceEmailDomain(result.getString
-                                ("API_PROVIDER")), result.getString("API_NAME"),
-                                result.getString("API_VERSION"));
+                    if (APIConstants.API_PRODUCT.toString().equals(apiType)) {
+                        APIProductIdentifier identifier = new APIProductIdentifier(
+                                APIUtil.replaceEmailDomain(result.getString("API_PROVIDER")),
+                                result.getString("API_NAME"), result.getString("API_VERSION"));
 
                         SubscribedAPI subscribedAPI = new SubscribedAPI(subscriber, identifier);
                         initSubscribedAPI(subscribedAPI, subscriber, result);
                         subscribedAPIs.add(subscribedAPI);
-
-                    } else if (APIType.API_PRODUCT.toString().equals(apiType)) {
-                        APIProductIdentifier identifier = new APIProductIdentifier(APIUtil.replaceEmailDomain(result.getString
+                    } else {
+                        APIIdentifier identifier = new APIIdentifier(APIUtil.replaceEmailDomain(result.getString
                                 ("API_PROVIDER")), result.getString("API_NAME"),
                                 result.getString("API_VERSION"));
 
@@ -1782,33 +1790,23 @@ public class ApiMgtDAO {
 
                 String[] groupIDArray = groupingId.split(",");
 
-                // Set the same parameters for each of the 2 SELECT statements of the UNION
-                for (int i = 0; i < 2; ++i) {
-                    statement.setInt(++paramIndex, tenantId);
-                    statement.setString(++paramIndex, applicationName);
-
-                    for (String groupId : groupIDArray) {
-                        statement.setString(++paramIndex, groupId);
-                    }
-                    statement.setString(++paramIndex, tenantDomain);
-                    statement.setString(++paramIndex, subscriber.getName());
-                }
-            } else {
-                // Set the same parameters for each of the 2 SELECT statements of the UNION
-                for (int i = 0; i < 2; ++i) {
-                    statement.setInt(++paramIndex, tenantId);
-                    statement.setString(++paramIndex, applicationName);
-                    statement.setString(++paramIndex, groupingId);
-                    statement.setString(++paramIndex, subscriber.getName());
-                }
-            }
-        } else {
-            // Set the same parameters for each of the 2 SELECT statements of the UNION
-            for (int i = 0; i < 2; ++i) {
                 statement.setInt(++paramIndex, tenantId);
                 statement.setString(++paramIndex, applicationName);
+                for (String groupId : groupIDArray) {
+                    statement.setString(++paramIndex, groupId);
+                }
+                statement.setString(++paramIndex, tenantDomain);
+                statement.setString(++paramIndex, subscriber.getName());
+            } else {
+                statement.setInt(++paramIndex, tenantId);
+                statement.setString(++paramIndex, applicationName);
+                statement.setString(++paramIndex, groupingId);
                 statement.setString(++paramIndex, subscriber.getName());
             }
+        } else {
+            statement.setInt(++paramIndex, tenantId);
+            statement.setString(++paramIndex, applicationName);
+            statement.setString(++paramIndex, subscriber.getName());
         }
 
         return statement.executeQuery();
@@ -1942,10 +1940,7 @@ public class ApiMgtDAO {
 
         String sqlQuery =
                         appendSubscriptionQueryWhereClause(groupingId,
-                                SQLConstants.GET_SUBSCRIBED_APIS_OF_SUBSCRIBER_SQL) +
-                        " UNION " +
-                        appendSubscriptionQueryWhereClause(groupingId,
-                                SQLConstants.GET_SUBSCRIBED_API_PRODUCTS_OF_SUBSCRIBER_SQL);
+                                SQLConstants.GET_SUBSCRIBED_APIS_OF_SUBSCRIBER_SQL);
 
         try (Connection connection = APIMgtDBUtil.getConnection();
              PreparedStatement ps = connection.prepareStatement(sqlQuery);
@@ -1953,19 +1948,19 @@ public class ApiMgtDAO {
             while (result.next()) {
                 String apiType = result.getString("TYPE");
 
-                if (APIType.API.toString().equals(apiType)) {
-                    APIIdentifier identifier = new APIIdentifier(APIUtil.replaceEmailDomain(result.getString
-                            ("API_PROVIDER")), result.getString("API_NAME"),
-                            result.getString("API_VERSION"));
-                    SubscribedAPI subscribedAPI = new SubscribedAPI(subscriber, identifier);
-
-                    initSubscribedAPIDetailed(subscribedAPI, subscriber, result);
-                    subscribedAPIs.add(subscribedAPI);
-                } else if (APIType.API_PRODUCT.toString().equals(apiType)) {
+                if (APIConstants.API_PRODUCT.toString().equals(apiType)) {
                     APIProductIdentifier identifier =
                             new APIProductIdentifier(APIUtil.replaceEmailDomain(result.getString("API_PROVIDER")),
                                     result.getString("API_NAME"), result.getString("API_VERSION"));
 
+                    SubscribedAPI subscribedAPI = new SubscribedAPI(subscriber, identifier);
+
+                    initSubscribedAPIDetailed(subscribedAPI, subscriber, result);
+                    subscribedAPIs.add(subscribedAPI);
+                } else {
+                    APIIdentifier identifier = new APIIdentifier(APIUtil.replaceEmailDomain(result.getString
+                            ("API_PROVIDER")), result.getString("API_NAME"),
+                            result.getString("API_VERSION"));
                     SubscribedAPI subscribedAPI = new SubscribedAPI(subscriber, identifier);
 
                     initSubscribedAPIDetailed(subscribedAPI, subscriber, result);
@@ -1989,31 +1984,21 @@ public class ApiMgtDAO {
                 String tenantDomain = MultitenantUtils.getTenantDomain(subscriber.getName());
                 String[] groupIDArray = groupingId.split(",");
 
-                // Set the same parameters for each of the 2 SELECT statements of the UNION
-                for (int i = 0; i < 2; ++i) {
-                    statement.setInt(++paramIndex, tenantId);
-
-                    for (String groupId : groupIDArray) {
-                        statement.setString(++paramIndex, groupId);
-                    }
-
-                    statement.setString(++paramIndex, tenantDomain);
-                    statement.setString(++paramIndex, subscriber.getName());
-                }
-            } else {
-                // Set the same parameters for each of the 2 SELECT statements of the UNION
-                for (int i = 0; i < 2; ++i) {
-                    statement.setInt(++paramIndex, tenantId);
-                    statement.setString(++paramIndex, groupingId);
-                    statement.setString(++paramIndex, subscriber.getName());
-                }
-            }
-        } else {
-            // Set the same parameters for each of the 2 SELECT statements of the UNION
-            for (int i = 0; i < 2; ++i) {
                 statement.setInt(++paramIndex, tenantId);
+                for (String groupId : groupIDArray) {
+                    statement.setString(++paramIndex, groupId);
+                }
+                statement.setString(++paramIndex, tenantDomain);
+                statement.setString(++paramIndex, subscriber.getName());
+
+            } else {
+                statement.setInt(++paramIndex, tenantId);
+                statement.setString(++paramIndex, groupingId);
                 statement.setString(++paramIndex, subscriber.getName());
             }
+        } else {
+            statement.setInt(++paramIndex, tenantId);
+            statement.setString(++paramIndex, subscriber.getName());
         }
 
         return statement.executeQuery();
@@ -2820,7 +2805,6 @@ public class ApiMgtDAO {
         String sqlQuery = SQLConstants.GET_API_SUBSCRIPTION_COUNT_BY_API_SQL;
         String artifactType = APIConstants.API_IDENTIFIER_TYPE;
         if (identifier instanceof APIProductIdentifier) {
-            sqlQuery = SQLConstants.GET_SUBSCRIPTION_COUNT_BY_API_PRODUCT_SQL;
             artifactType = APIConstants.API_PRODUCT_IDENTIFIER_TYPE;
         }
 
@@ -3257,7 +3241,7 @@ public class ApiMgtDAO {
     public UserApplicationAPIUsage[] getAllAPIProductUsageByProvider(String providerName) throws APIManagementException {
         try (Connection connection = APIMgtDBUtil.getConnection();
             PreparedStatement ps =
-                    connection.prepareStatement(SQLConstants.GET_APP_API_PRODUCT_USAGE_BY_PROVIDER_SQL)) {
+                    connection.prepareStatement(SQLConstants.GET_APP_API_USAGE_BY_PROVIDER_SQL)) {
             ps.setString(1, APIUtil.replaceEmailDomainBack(providerName));
             try (ResultSet result = ps.executeQuery()) {
                 Map<String, UserApplicationAPIUsage> userApplicationUsages = new TreeMap<String, UserApplicationAPIUsage>();
@@ -3282,8 +3266,8 @@ public class ApiMgtDAO {
                         usage.setAccessTokenStatus(tokenStatus);
                         userApplicationUsages.put(key, usage);
                     }
-                    APIProductIdentifier apiProductId = new APIProductIdentifier(result.getString("API_PRODUCT_PROVIDER"), result.getString
-                            ("API_PRODUCT_NAME"), result.getString("API_PRODUCT_VERSION"));
+                    APIProductIdentifier apiProductId = new APIProductIdentifier(result.getString("API_PROVIDER"), result.getString
+                            ("API_NAME"), result.getString("API_VERSION"));
                     SubscribedAPI apiSubscription = new SubscribedAPI(new Subscriber(userId), apiProductId);
                     apiSubscription.setSubStatus(subStatus);
                     apiSubscription.setSubCreatedStatus(subsCreateState);
@@ -3481,9 +3465,6 @@ public class ApiMgtDAO {
             boolean userRatingExists = false;
             //This query to check the ratings already exists for the user in the AM_API_RATINGS table
             String sqlQuery = SQLConstants.GET_API_RATING_SQL;
-            if(identifier instanceof APIProductIdentifier){
-                sqlQuery = SQLConstants.GET_API_PRODUCT_RATING_SQL;
-            }
 
             psSelect = conn.prepareStatement(sqlQuery);
             psSelect.setInt(1, id);
@@ -3499,9 +3480,6 @@ public class ApiMgtDAO {
             if (!userRatingExists) {
                 //This query to insert into the AM_API_RATINGS table
                 sqlAddQuery = SQLConstants.ADD_API_RATING_SQL;
-                if (identifier instanceof APIProductIdentifier) {
-                    sqlAddQuery = SQLConstants.ADD_API_PRODUCT_RATING_SQL;
-                }
                 ps = conn.prepareStatement(sqlAddQuery);
                 ps.setString(1, ratingId);
                 ps.setInt(2, rating);
@@ -3510,9 +3488,6 @@ public class ApiMgtDAO {
             } else {
                 // This query to update the AM_API_RATINGS table
                 sqlAddQuery = SQLConstants.UPDATE_API_RATING_SQL;
-                if (identifier instanceof APIProductIdentifier) {
-                    sqlAddQuery = SQLConstants.UPDATE_API_PRODUCT_RATING_SQL;
-                }
                 ps = conn.prepareStatement(sqlAddQuery);
                 // Adding data to the AM_API_RATINGS table
                 ps.setInt(1, rating);
@@ -3587,10 +3562,6 @@ public class ApiMgtDAO {
 
             //This query to check the ratings already exists for the user in the AM_API_RATINGS table
             String sqlQuery = SQLConstants.GET_API_RATING_ID_SQL;
-            if(identifier instanceof APIProductIdentifier) {
-                sqlQuery = SQLConstants.GET_API_PRODUCT_RATING_ID_SQL;
-            }
-
             psSelect = conn.prepareStatement(sqlQuery);
             psSelect.setInt(1, id);
             psSelect.setInt(2, subscriber.getId());
@@ -3671,9 +3642,7 @@ public class ApiMgtDAO {
             }
             //This query to update the AM_API_RATINGS table
             String sqlQuery = SQLConstants.GET_API_RATING_SQL;
-            if (identifier instanceof APIProductIdentifier) {
-                sqlQuery = SQLConstants.GET_API_PRODUCT_RATING_SQL;
-            }
+
             // Adding data to the AM_API_RATINGS  table
             ps = conn.prepareStatement(sqlQuery);
             ps.setInt(1, id);
@@ -3750,9 +3719,6 @@ public class ApiMgtDAO {
             id = getAPIID(identifier, conn);
 
             String sqlQuery = SQLConstants.GET_API_RATING_INFO_SQL;
-            if (identifier instanceof APIProductIdentifier) {
-                sqlQuery = SQLConstants.GET_API_PRODUCT_RATING_INFO_SQL;
-            }
             if (id == -1) {
                 String msg = "Could not load API record for: " + identifier.getName();
                 log.error(msg);
@@ -3837,9 +3803,6 @@ public class ApiMgtDAO {
             }
             //This query to get rating information from the AM_API_RATINGS table
             String sqlQuery = SQLConstants.GET_API_ALL_RATINGS_SQL;
-            if (identifier instanceof APIProductIdentifier) {
-                sqlQuery = SQLConstants.GET_API_PRODUCT_ALL_RATINGS_SQL;
-            }
             ps = conn.prepareStatement(sqlQuery);
             ps.setInt(1, id);
             rs = ps.executeQuery();
@@ -3957,9 +3920,6 @@ public class ApiMgtDAO {
             }
             //This query to update the AM_API_RATINGS table
             String sqlQuery = SQLConstants.GET_API_AVERAGE_RATING_SQL;
-            if (identifier instanceof APIProductIdentifier){
-                sqlQuery = SQLConstants.GET_API_PRODUCT_AVERAGE_RATING_SQL;
-            }
 
             ps = conn.prepareStatement(sqlQuery);
             ps.setInt(1, apiId);
@@ -3970,7 +3930,7 @@ public class ApiMgtDAO {
             }
 
         } catch (SQLException e) {
-            handleException("Failed to add Application", e);
+            handleException("Failed to get average rating ", e);
         } finally {
             APIMgtDBUtil.closeAllConnections(ps, null, rs);
         }
@@ -7207,8 +7167,8 @@ public class ApiMgtDAO {
             prepStmt.setString(3, apiProductIdentifier.getVersion());
             try (ResultSet rs = prepStmt.executeQuery()) {
                 if (rs.next()) {
-                    product.setProductId(rs.getInt("API_PRODUCT_ID"));
-                    product.setProductLevelPolicy(rs.getString("API_PRODUCT_TIER"));
+                    product.setProductId(rs.getInt("API_ID"));
+                    product.setProductLevelPolicy(rs.getString("API_TIER"));
                 } else {
                     String msg = "Unable to find the API Product : " + apiProductIdentifier.getName() + "-" +
                             APIUtil.replaceEmailDomainBack(apiProductIdentifier.getProviderName()) + "-" +
@@ -7456,9 +7416,9 @@ public class ApiMgtDAO {
         return urlMappings;
     }
 
-    public Set<URITemplate> getURITemplatesOfAPI(APIIdentifier identifier, String productionURL, String sandboxURL)
+    public Set<URITemplate> getURITemplatesOfAPI(APIIdentifier identifier)
             throws APIManagementException {
-        Map<String, URITemplate> uriTemplates = new HashMap<>();
+        Map<Integer, URITemplate> uriTemplates = new HashMap<>();
 
         try (Connection conn = APIMgtDBUtil.getConnection();
             PreparedStatement ps = conn.prepareStatement(SQLConstants.GET_URL_TEMPLATES_OF_API_SQL)) {
@@ -7470,44 +7430,29 @@ public class ApiMgtDAO {
                     String urlPattern = rs.getString("URL_PATTERN");
                     String verb = rs.getString("HTTP_METHOD");
 
-                    String key = urlPattern + verb;
+                    URITemplate uriTemplate = new URITemplate();
+                    uriTemplate.setUriTemplate(urlPattern);
+                    uriTemplate.setHTTPVerb(verb);
+                    uriTemplate.setHttpVerbs(verb);
+                    String authType = rs.getString("AUTH_SCHEME");
+                    String throttlingTier = rs.getString("THROTTLING_TIER");
+                    uriTemplate.setAuthType(authType);
+                    uriTemplate.setAuthTypes(authType);
+                    uriTemplate.setThrottlingTier(throttlingTier);
+                    uriTemplate.setThrottlingTiers(throttlingTier);
 
-                    URITemplate uriTemplate = uriTemplates.get(key);
-
-                    if (uriTemplate != null) {
-                        Optional<APIProductIdentifier> productId = getProductIdIfExists(rs);
-                        if (productId.isPresent()) {
-                            uriTemplate.addUsedByProduct(productId.get());
-                        }
-                    } else {
-                        uriTemplate = new URITemplate();
-                        uriTemplate.setUriTemplate(urlPattern);
-                        uriTemplate.setHTTPVerb(verb);
-                        uriTemplate.setHttpVerbs(verb);
-                        String authType = rs.getString("AUTH_SCHEME");
-                        String throttlingTier = rs.getString("THROTTLING_TIER");
-                        uriTemplate.setAuthType(authType);
-                        uriTemplate.setAuthTypes(authType);
-                        uriTemplate.setThrottlingTier(throttlingTier);
-                        uriTemplate.setThrottlingTiers(throttlingTier);
-                        uriTemplate.setResourceURI(productionURL);
-                        uriTemplate.setResourceSandboxURI(sandboxURL);
-                        InputStream mediationScriptBlob = rs.getBinaryStream("MEDIATION_SCRIPT");
-                        if (mediationScriptBlob != null) {
-                            String script = APIMgtDBUtil.getStringFromInputStream(mediationScriptBlob);
-                            uriTemplate.setMediationScript(script);
-                            uriTemplate.setMediationScripts(verb, script);
-                        }
-
-                        Optional<APIProductIdentifier> productId = getProductIdIfExists(rs);
-                        if (productId.isPresent()) {
-                            uriTemplate.addUsedByProduct(productId.get());
-                        }
-
-                        uriTemplates.put(key, uriTemplate);
+                    InputStream mediationScriptBlob = rs.getBinaryStream("MEDIATION_SCRIPT");
+                    if (mediationScriptBlob != null) {
+                        String script = APIMgtDBUtil.getStringFromInputStream(mediationScriptBlob);
+                        uriTemplate.setMediationScript(script);
+                        uriTemplate.setMediationScripts(verb, script);
                     }
+
+                    uriTemplates.put(rs.getInt("URL_MAPPING_ID"), uriTemplate);
                 }
             }
+
+            setAssociatedAPIProducts(identifier, uriTemplates);
         } catch (SQLException e) {
             handleException("Failed to get URI Templates of API" + identifier, e);
         }
@@ -7515,20 +7460,29 @@ public class ApiMgtDAO {
         return new HashSet<>(uriTemplates.values());
     }
 
-    private Optional<APIProductIdentifier> getProductIdIfExists(ResultSet rs) throws SQLException {
-        String productProvider = rs.getString("API_PRODUCT_PROVIDER");
+    private void setAssociatedAPIProducts(APIIdentifier identifier, Map<Integer, URITemplate> uriTemplates)
+            throws SQLException {
+        try (Connection conn = APIMgtDBUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(SQLConstants.GET_API_PRODUCT_URI_TEMPLATE_ASSOCIATION_SQL)) {
+            ps.setString(1, APIUtil.replaceEmailDomainBack(identifier.getProviderName()));
+            ps.setString(2, identifier.getName());
+            ps.setString(3, identifier.getVersion());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String productName = rs.getString("API_NAME");
+                    String productVersion = rs.getString("API_VERSION");
+                    String productProvider = rs.getString("API_PROVIDER");
+                    int uriTemplateId  = rs.getInt("URL_MAPPING_ID");
 
-        if (rs.wasNull()) {
-            return Optional.empty();
+                    URITemplate uriTemplate = uriTemplates.get(uriTemplateId);
+                    if (uriTemplate != null) {
+                        APIProductIdentifier productIdentifier = new APIProductIdentifier
+                                (productProvider, productName, productVersion);
+                        uriTemplate.addUsedByProduct(productIdentifier);
+                    }
+                }
+            }
         }
-
-        String productName = rs.getString("API_PRODUCT_NAME");
-        String productVersion = rs.getString("API_PRODUCT_VERSION");
-
-        APIProductIdentifier productIdentifier = new APIProductIdentifier
-                (productProvider, productName, productVersion);
-
-        return Optional.of(productIdentifier);
     }
 
     // This should be only used only when Token Partitioning is enabled.
@@ -7702,12 +7656,7 @@ public class ApiMgtDAO {
             }
 
             /*This query is to update the AM_API_COMMENTS table */
-            String addCommentQuery;
-            if (identifier instanceof APIIdentifier) {
-                addCommentQuery = SQLConstants.ADD_COMMENT_SQL;
-            } else {
-                addCommentQuery = SQLConstants.ADD_API_PRODUCT_COMMENT_SQL;
-            }
+            String addCommentQuery = SQLConstants.ADD_COMMENT_SQL;
             commentId = UUID.randomUUID().toString();
 
             /*Adding data to the AM_API_COMMENTS table*/
@@ -7799,12 +7748,7 @@ public class ApiMgtDAO {
         PreparedStatement prepStmt = null;
         int id = -1;
 
-        String getCommentQuery;
-        if (identifier instanceof APIIdentifier) {
-            getCommentQuery = SQLConstants.GET_COMMENT_SQL;
-        } else {
-            getCommentQuery = SQLConstants.GET_API_PRODUCT_COMMENT_SQL;
-        }
+        String getCommentQuery = SQLConstants.GET_COMMENT_SQL;
         try {
             connection = APIMgtDBUtil.getConnection();
             id = getAPIID(identifier, connection);
@@ -7858,11 +7802,7 @@ public class ApiMgtDAO {
         boolean isProduct = apiTypeWrapper.isAPIProduct();
         int id = -1;
         String sqlQuery;
-        if(!isProduct) {
-            sqlQuery  = SQLConstants.GET_COMMENTS_SQL;
-        } else {
-            sqlQuery = SQLConstants.GET_API_PRODUCT_COMMENTS_SQL;
-        }
+        sqlQuery  = SQLConstants.GET_COMMENTS_SQL;
         Identifier identifier;
 
         try {
@@ -8235,8 +8175,6 @@ public class ApiMgtDAO {
                 id = getAPIID((APIIdentifier) identifier, conn);
 
             } else if (identifier instanceof APIProductIdentifier) {
-                sqlQuery = SQLConstants.GET_EXTERNAL_WORKFLOW_REFERENCE_FOR_SUBSCRIPTION_PRODUCT_SQL;
-                postgreSQL = SQLConstants.GET_EXTERNAL_WORKFLOW_REFERENCE_FOR_SUBSCRIPTION_POSTGRE_PRODUCT_SQL;
                 id = ((APIProductIdentifier) identifier).getProductId();
             }
             
@@ -8450,13 +8388,12 @@ public class ApiMgtDAO {
         ResultSet rs = null;
         int id = -1;
 
-        String sqlQuery = SQLConstants.GET_SUBSCRIPTION_STATUS_SQL;;
+        String sqlQuery = SQLConstants.GET_SUBSCRIPTION_STATUS_SQL;
         try {
             conn = APIMgtDBUtil.getConnection();
             if (identifier instanceof APIIdentifier) {
                 id = getAPIID((APIIdentifier) identifier, conn);
             } else if (identifier instanceof APIProductIdentifier) {
-                sqlQuery = SQLConstants.GET_SUBSCRIPTION_STATUS_PRODUCT_SQL;
                 id = ((APIProductIdentifier) identifier).getProductId();
             }
             ps = conn.prepareStatement(sqlQuery);
@@ -8965,7 +8902,7 @@ public class ApiMgtDAO {
                         if (roles != null) {
                             roleList = Lists.newArrayList(Splitter.on(",").trimResults().split(roles));
                         } else {
-                            roleList = Collections.EMPTY_LIST;
+                            roleList = Arrays.asList("");
                         }
 
                         for (String role : roleList) {
@@ -9448,25 +9385,52 @@ public class ApiMgtDAO {
     public Map<String, String> getScopeRolesOfApplication(String consumerKey) throws APIManagementException {
         Connection conn = null;
         ResultSet resultSet = null;
+        ResultSet resultSet1 = null;
+        ResultSet resultSet2 = null;
         PreparedStatement ps = null;
+        PreparedStatement getSubscribedApisAndProducts = null;
+        PreparedStatement getIncludedApisInProduct = null;
+
+        Set<Integer> apiIdSet = new HashSet<>();
 
         try {
             conn = APIMgtDBUtil.getConnection();
-
-            String sqlQuery = SQLConstants.GET_SCOPE_ROLES_OF_APPLICATION_SQL;
-
-            ps = conn.prepareStatement(sqlQuery);
-            ps.setString(1, consumerKey);
-            resultSet = ps.executeQuery();
+            String sqlQueryForGetSubscribedApis = SQLConstants.GET_SUBSCRIBED_APIS_FROM_CONSUMER_KEY;
+            getSubscribedApisAndProducts = conn.prepareStatement(sqlQueryForGetSubscribedApis);
+            getSubscribedApisAndProducts.setString(1, consumerKey);
+            resultSet1 = getSubscribedApisAndProducts.executeQuery();
+            while (resultSet1.next()) {
+                int apiId = resultSet1.getInt("API_ID");
+                String getIncludedApisInProductQuery = SQLConstants.GET_INCLUDED_APIS_IN_PRODUCT_SQL;
+                getIncludedApisInProduct = conn.prepareStatement(getIncludedApisInProductQuery);
+                getIncludedApisInProduct.setInt(1, apiId);
+                resultSet2 = getIncludedApisInProduct.executeQuery();
+                while (resultSet2.next()) {
+                    int includedApiId = resultSet2.getInt("API_ID");
+                    apiIdSet.add(includedApiId);
+                }
+                apiIdSet.add(apiId);
+            }
             Map<String, String> scopes = new HashMap<String, String>();
-            while (resultSet.next()) {
-                if (scopes.containsKey(resultSet.getString(1))) {
-                    // Role for the scope exists. Append the new role.
-                    String roles = scopes.get(resultSet.getString(1));
-                    roles += "," + resultSet.getString(2);
-                    scopes.put(resultSet.getString(1), roles);
-                } else {
-                    scopes.put(resultSet.getString(1), resultSet.getString(2));
+            if (!apiIdSet.isEmpty()) {
+                String apiIdList = StringUtils.join(apiIdSet, ", ");
+                String sqlQuery =
+                        SQLConstants.GET_SCOPE_ROLES_OF_APPLICATION_SQL + apiIdList + SQLConstants.CLOSING_BRACE;
+                if (conn.getMetaData().getDriverName().contains("Oracle")) {
+                    sqlQuery = SQLConstants.GET_SCOPE_ROLES_OF_APPLICATION_ORACLE_SQL + apiIdList
+                            + SQLConstants.CLOSING_BRACE;
+                }
+                ps = conn.prepareStatement(sqlQuery);
+                resultSet = ps.executeQuery();
+                while (resultSet.next()) {
+                    if (scopes.containsKey(resultSet.getString(1))) {
+                        // Role for the scope exists. Append the new role.
+                        String roles = scopes.get(resultSet.getString(1));
+                        roles += "," + resultSet.getString(2);
+                        scopes.put(resultSet.getString(1), roles);
+                    } else {
+                        scopes.put(resultSet.getString(1), resultSet.getString(2));
+                    }
                 }
             }
             return scopes;
@@ -9474,6 +9438,8 @@ public class ApiMgtDAO {
             handleException("Failed to retrieve scopes of application" + consumerKey, e);
         } finally {
             APIMgtDBUtil.closeAllConnections(ps, conn, resultSet);
+            APIMgtDBUtil.closeAllConnections(getSubscribedApisAndProducts, null, resultSet1);
+            APIMgtDBUtil.closeAllConnections(getIncludedApisInProduct, null, resultSet2);
         }
         return null;
     }
@@ -9553,28 +9519,6 @@ public class ApiMgtDAO {
         }
     }
     
-    /**
-     * Delete  subscription based on API_PRODUCT_ID, APP_ID
-     *
-     * @param apiProductId - subscriber API_PRODUCT_ID
-     * @param appId - application ID used to subscribe
-     * @throws java.sql.SQLException - Letting the caller to handle the roll back
-     */
-    private void deleteSubscriptionByApiProductIDAndAppID(int apiProductId, int appId, Connection conn)
-            throws SQLException {
-        String deleteQuery = SQLConstants.REMOVE_SUBSCRIPTION_BY_APPLICATION_ID_AND_PRODUCT_SQL;
-        PreparedStatement ps = null;
-        try {
-            ps = conn.prepareStatement(deleteQuery);
-            ps.setInt(1, apiProductId);
-            ps.setInt(2, appId);
-
-            ps.executeUpdate();
-        } finally {
-            APIMgtDBUtil.closeAllConnections(ps, null, null);
-        }
-    }
-
     /**
      * Check the given api name is already available in the api table under given tenant domain
      *
@@ -12940,77 +12884,15 @@ public class ApiMgtDAO {
             if (!isAdvancedThrottleEnabled) {
                 if (!defaultVersionInvoked) {
                     ps.setString(3, version);
-                    ps.setString(4, context);
-                    ps.setString(5, consumerKey);
-                    ps.setString(6, version);
                 }
             } else {
                 ps.setInt(3, apiOwnerTenantId);
                 if (!defaultVersionInvoked) {
                     ps.setString(4, version);
-                    ps.setString(5, context);
-                    ps.setString(6, version);
-                    ps.setInt(7, apiOwnerTenantId);
-
                 }
             }
-
             rs = ps.executeQuery();
-            boolean isAPISubscriptionExist = false;
-            boolean subscriptionsExist = false;
-            int productSubscriptionCount = 0;
-            while (rs.next()) {
-                /*
-                 * Subscription validation happens according to the following rules
-                 * - If application is used to subscribe to both API and API product which has that API, precedence is
-                 *   given to API subscription. Validation results will contain info related to API
-                 * - If same API resource exists in two products and if same application is used to subscribe to those 
-                 *   two products, invoking the product would result in invalid results. It will return only one subscription
-                 *   information. This would be an unlikely scenario.
-                 * - Default version api invocation is not considered for API product. Resources in API product should 
-                 *   have the version in the resource when creating. 
-                 */
-                subscriptionsExist = true;
-                if (isAPISubscriptionExist) {
-                    break;
-                }
-
-                // check whether the current subscription is an api subscription and if yes allow to override previous
-                // infoDTO properties
-                String productName = rs.getString("API_PRODUCT_NAME");
-                String apiName = rs.getString("API_NAME");
-                if (log.isDebugEnabled()) {
-                    log.debug("Subscription validation: API " + apiName + "  API Product " + productName);
-                }
-
-                if (StringUtils.isEmpty(productName)) {
-                    if (log.isDebugEnabled()) {
-                        log.debug("A valid API subscription was found for request to " + context + " through consumer"
-                                + " key " + consumerKey);
-                    }
-                    infoDTO.setProductName(null);
-                    infoDTO.setProductProvider(null);
-                    isAPISubscriptionExist = true;
-                } else {
-                    // Allow to override previous infoDTO properties only if no API subscription was found and no previous
-                    // product subscription was found
-                    // Order by API_PRODUCT_NAME ASC in sql query assures the api subscriptions (where api_product_name is  null)
-                    // appear first in the result set
-                    if (productSubscriptionCount > 0) {
-                        //if the provided consumer key has more than one product subscriptions to the requested context
-                        //log a warning and return subscription details for the first subscription
-                        log.warn("Requested context " + context + " has more than one product "
-                                + "subscription from consumer key " + consumerKey + ". Use " + infoDTO.getProductName()
-                                + " as the valid subscription");
-                        infoDTO.setAuthorized(true);
-                        return infoDTO;
-                    }
-                    infoDTO.setApiName(null);
-                    String productProvider = rs.getString("API_PRODUCT_PROVIDER");
-                    infoDTO.setProductName(productName);
-                    infoDTO.setProductProvider(productProvider);
-                    productSubscriptionCount++;
-                }
+            if (rs.next()) {
                 String subscriptionStatus = rs.getString("SUB_STATUS");
                 String type = rs.getString("KEY_TYPE");
                 if (APIConstants.SubscriptionStatus.BLOCKED.equals(subscriptionStatus)) {
@@ -13044,7 +12926,7 @@ public class ApiMgtDAO {
                 infoDTO.setTier(SUB_TIER);
                 infoDTO.setSubscriber(rs.getString("USER_ID"));
                 infoDTO.setApplicationId(rs.getString("APPLICATION_ID"));
-                infoDTO.setApiName(apiName);
+                infoDTO.setApiName(rs.getString("API_NAME"));
                 infoDTO.setApiPublisher(API_PROVIDER);
                 infoDTO.setApplicationName(rs.getString("NAME"));
                 infoDTO.setApplicationTier(APP_TIER);
@@ -13057,11 +12939,11 @@ public class ApiMgtDAO {
                     String subscriberTenant = MultitenantUtils.getTenantDomain(subscriberUserId);
                     int apiId = rs.getInt("API_ID");
                     int subscriberTenantId = APIUtil.getTenantId(subscriberUserId);
-
+                    int apiTenantId = APIUtil.getTenantId(API_PROVIDER);
                     //TODO isContentAware
                     boolean isContentAware =
                             isAnyPolicyContentAware(conn, apiTier, APP_TIER, SUB_TIER,
-                                    subscriberTenantId, apiOwnerTenantId, apiId);
+                                    subscriberTenantId, apiTenantId, apiId);
                     infoDTO.setContentAware(isContentAware);
 
                     //TODO this must implement as a part of throttling implementation.
@@ -13089,14 +12971,12 @@ public class ApiMgtDAO {
                     // condition id list for all throttling tiers associated with this API.
                     infoDTO.setThrottlingDataList(list);
                 }
-            }
-            if (subscriptionsExist) {
                 infoDTO.setAuthorized(true);
                 return infoDTO;
-            } else {
-                infoDTO.setAuthorized(false);
-                infoDTO.setValidationStatus(APIConstants.KeyValidationStatus.API_AUTH_RESOURCE_FORBIDDEN);
             }
+            infoDTO.setAuthorized(false);
+            infoDTO.setValidationStatus(
+                    APIConstants.KeyValidationStatus.API_AUTH_RESOURCE_FORBIDDEN);
         } catch (SQLException e) {
             handleException("Exception occurred while validating Subscription.", e);
         } finally {
@@ -13106,9 +12986,6 @@ public class ApiMgtDAO {
                 log.error("Error occurred while fetching data: " + e.getMessage(), e);
             }
             APIMgtDBUtil.closeAllConnections(ps, conn, rs);
-            if (log.isDebugEnabled()) {
-                log.debug("Subscription validation completed: " + infoDTO.toString());
-            }
         }
         return infoDTO;
     }
@@ -13410,11 +13287,9 @@ public class ApiMgtDAO {
         String loginUserName = getLoginUserName(userId);
         int tenantId = APIUtil.getTenantId(loginUserName);
 
-        String sqlQuery = SQLConstants.GET_SUBSCRIBED_APIS_OF_USER_BY_APP_SQL + "  UNION  " +
-                SQLConstants.GET_SUBSCRIBED_API_PRODUCTS_OF_USER_BY_APP_SQL;
+        String sqlQuery = SQLConstants.GET_SUBSCRIBED_APIS_OF_USER_BY_APP_SQL;
         if (forceCaseInsensitiveComparisons) {
-            sqlQuery = SQLConstants.GET_SUBSCRIBED_APIS_OF_USER_BY_APP_CASE_INSENSITIVE_SQL + "  UNION  " +
-            SQLConstants.GET_SUBSCRIBED_API_PRODUCTS_OF_USER_BY_APP_CASE_INSENSITIVE_SQL;
+            sqlQuery = SQLConstants.GET_SUBSCRIBED_APIS_OF_USER_BY_APP_CASE_INSENSITIVE_SQL;
         }
 
         try {
@@ -13422,8 +13297,6 @@ public class ApiMgtDAO {
             ps = conn.prepareStatement(sqlQuery);
             ps.setInt(1, tenantId);
             ps.setString(2, applicationName);
-            ps.setInt(3, tenantId);
-            ps.setString(4, applicationName);
             rs = ps.executeQuery();
             while (rs.next()) {
                 APISubscriptionInfoDTO infoDTO = new APISubscriptionInfoDTO();
@@ -13973,7 +13846,7 @@ public class ApiMgtDAO {
             connection = APIMgtDBUtil.getConnection();   
             connection.setAutoCommit(false);
             String queryAddAPIProduct = SQLConstants.ADD_API_PRODUCT;
-            prepStmtAddAPIProduct = connection.prepareStatement(queryAddAPIProduct, new String[]{"api_product_id"});
+            prepStmtAddAPIProduct = connection.prepareStatement(queryAddAPIProduct, new String[]{"api_id"});
             prepStmtAddAPIProduct.setString(1, APIUtil.replaceEmailDomainBack(identifier.getProviderName()));
             prepStmtAddAPIProduct.setString(2, identifier.getName());
             prepStmtAddAPIProduct.setString(3, identifier.getVersion());
@@ -13981,6 +13854,7 @@ public class ApiMgtDAO {
             prepStmtAddAPIProduct.setString(5, apiProduct.getProductLevelPolicy());
             prepStmtAddAPIProduct.setString(6, APIUtil.replaceEmailDomainBack(identifier.getProviderName()));
             prepStmtAddAPIProduct.setTimestamp(7, new Timestamp(System.currentTimeMillis()));
+            prepStmtAddAPIProduct.setString(8, APIConstants.API_PRODUCT);
 
             prepStmtAddAPIProduct.execute();
 
@@ -14076,7 +13950,7 @@ public class ApiMgtDAO {
      */
     public void deleteAPIProduct(APIProductIdentifier productIdentifier) throws APIManagementException {
         String deleteQuery = SQLConstants.DELETE_API_PRODUCT_SQL;
-        String deleteRatingsQuery = SQLConstants.REMOVE_FROM_API_PRODUCT_RATING_SQL;
+        String deleteRatingsQuery = SQLConstants.REMOVE_FROM_API_RATING_SQL;
         PreparedStatement ps = null;
         Connection connection = null;
         try {
@@ -14105,39 +13979,27 @@ public class ApiMgtDAO {
     }
 
     public List<APIProductResource> getProductMappingsForAPI(API api) throws APIManagementException {
-        Connection connection = null;
-
-        String query = SQLConstants.GET_PRODUCT_RESOURCE_MAPPINGS_FOR_API;
-        List<APIProductResource> productMappings = new ArrayList<APIProductResource>();
+        List<APIProductResource> productMappings = new ArrayList<>();
         APIIdentifier apiIdentifier = api.getId();
-        int apiId = getAPIID(apiIdentifier, connection);
 
-        try (Connection conn = APIMgtDBUtil.getConnection()) {
-            try (PreparedStatement ps = conn.prepareStatement(query)){
-                ps.setInt(1, apiId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        APIProductResource productMapping = new APIProductResource();
-                        productMapping.setApiIdentifier(apiIdentifier);
-                        APIProductIdentifier productIdentifier = new APIProductIdentifier(
-                                rs.getString("API_PRODUCT_PROVIDER"), rs.getString("API_PRODUCT_NAME"),
-                                rs.getString("API_PRODUCT_VERSION"));
-                        productMapping.setProductIdentifier(productIdentifier);
-                        URITemplate uriTemplate = new URITemplate();
-                        uriTemplate.setHTTPVerb(rs.getString("HTTP_METHOD"));
-                        uriTemplate.setResourceURI(rs.getString("URL_PATTERN"));
-                        productMapping.setUriTemplate(uriTemplate);
-                        productMappings.add(productMapping);
-                    }
-                }
+        Set<URITemplate> uriTemplatesOfAPI = getURITemplatesOfAPI(apiIdentifier);
+
+        for (URITemplate uriTemplate : uriTemplatesOfAPI) {
+            Set<APIProductIdentifier> apiProductIdentifiers = uriTemplate.retrieveUsedByProducts();
+
+            for (APIProductIdentifier apiProductIdentifier : apiProductIdentifiers) {
+                APIProductResource productMapping = new APIProductResource();
+                productMapping.setProductIdentifier(apiProductIdentifier);
+                productMapping.setUriTemplate(uriTemplate);
+
+                productMappings.add(productMapping);
             }
-        } catch (SQLException e) {
-            handleException("Error while adding product mappings fro api " + api.getId(), e);
         }
+
         return productMappings;
     }
 
-    private int getAPIProductId(APIProductIdentifier identifier) throws APIManagementException {
+    public int getAPIProductId(APIProductIdentifier identifier) throws APIManagementException {
         Connection conn = null;
         String queryGetProductId = SQLConstants.GET_PRODUCT_ID;
         PreparedStatement preparedStatement = null;
@@ -14154,7 +14016,7 @@ public class ApiMgtDAO {
             rs = preparedStatement.executeQuery();
 
             if (rs.next()) {
-                productId = rs.getInt("API_PRODUCT_ID");
+                productId = rs.getInt("API_ID");
             }
 
             if (productId == -1) {
@@ -14219,13 +14081,12 @@ public class ApiMgtDAO {
      */
     public List<APIProductResource> getAPIProductResourceMappings(APIProductIdentifier productIdentifier)
             throws APIManagementException {
+        int productId = getAPIProductId(productIdentifier);
         List<APIProductResource> productResourceList = new ArrayList<>();
         try (Connection connection = APIMgtDBUtil.getConnection()) {
             String sql = SQLConstants.GET_RESOURCES_OF_PRODUCT;
             try (PreparedStatement ps = connection.prepareStatement(sql)) {
-                ps.setString(1, APIUtil.replaceEmailDomainBack(productIdentifier.getProviderName()));
-                ps.setString(2, productIdentifier.getName());
-                ps.setString(3, productIdentifier.getVersion());
+                ps.setInt(1, productId);
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         APIProductResource resource = new APIProductResource();
@@ -14255,6 +14116,54 @@ public class ApiMgtDAO {
             handleException("Failed to get product resources of api product : " + productIdentifier, e);
         }
         return productResourceList;
+    }
+
+    /**
+     * Add new Audit API ID
+     *
+     * @param apiIdentifier APIIdentifier object to retrieve API ID
+     * @param uuid Audit API ID
+     * @throws APIManagementException
+     */
+    public void addAuditApiMapping(APIIdentifier apiIdentifier, String uuid) throws APIManagementException {
+        Connection connection = null;
+        String query = SQLConstants.ADD_SECURITY_AUDIT_MAP_SQL;
+        int apiId = getAPIID(apiIdentifier, connection);
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(query)) {
+                ps.setInt(1, apiId);
+                ps.setString(2, uuid);
+                ps.executeUpdate();
+            }
+        } catch (SQLException e) {
+            handleException("Error while adding new audit api id: ", e);
+        }
+    }
+
+    /**
+     * Get Audit API ID
+     *
+     * @param apiIdentifier APIIdentifier object to retrieve API ID
+     * @throws APIManagementException
+     */
+    public String getAuditApiId(APIIdentifier apiIdentifier) throws APIManagementException {
+        Connection connection = null;
+        String query = SQLConstants.GET_AUDIT_UUID_SQL;
+        int apiId = getAPIID(apiIdentifier, connection);
+        String auditUuid = null;
+        try (Connection conn = APIMgtDBUtil.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(query)) {
+                ps.setInt(1, apiId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        auditUuid = rs.getString("AUDIT_UUID");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            handleException("Error while getting audit api id: ", e);
+        }
+        return auditUuid;
     }
 
     /**
@@ -14353,8 +14262,12 @@ public class ApiMgtDAO {
      * @param tenantDomain tenant domain of the jwt subject.
      * @param expiryTime   expiry time of the token.
      */
-    public void addRevokedJWTSignature(String jwtSignature, Long expiryTime, String tenantDomain) throws APIManagementException {
+    public void addRevokedJWTSignature(String jwtSignature, String type ,
+                                       Long expiryTime, int tenantId) throws APIManagementException {
 
+        if (StringUtils.isEmpty(type)) {
+            type = APIConstants.DEFAULT;
+        }
         String addJwtSignature = SQLConstants.RevokedJWTConstants.ADD_JWT_SIGNATURE;
         try (Connection conn = APIMgtDBUtil.getConnection();
              PreparedStatement ps = conn.prepareStatement
@@ -14363,7 +14276,8 @@ public class ApiMgtDAO {
             ps.setString(1, UUID.randomUUID().toString());
             ps.setString(2, jwtSignature);
             ps.setLong(3, expiryTime);
-            ps.setString(4, tenantDomain);
+            ps.setInt(4, tenantId);
+            ps.setString(5, type);
             ps.execute();
             conn.commit();
         } catch (SQLException e) {

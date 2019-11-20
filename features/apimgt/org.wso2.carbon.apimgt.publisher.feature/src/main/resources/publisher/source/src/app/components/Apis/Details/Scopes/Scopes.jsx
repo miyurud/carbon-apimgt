@@ -36,17 +36,16 @@ import { isRestricted } from 'AppData/AuthManager';
 import { withAPI } from 'AppComponents/Apis/Details/components/ApiContext';
 import Delete from './Delete';
 
-const styles = theme => ({
+const styles = (theme) => ({
     root: {
         paddingTop: 0,
         paddingLeft: 0,
-        maxWidth: theme.custom.contentAreaWidth,
     },
     buttonProgress: {
         position: 'relative',
         margin: theme.spacing(1),
     },
-    headline: { paddingTop: theme.spacing.unit * 1.25, paddingLeft: theme.spacing.unit * 2.5 },
+    headline: { paddingTop: theme.spacing(1.25), paddingLeft: theme.spacing(2.5) },
     heading: {
         flexGrow: 1,
         marginTop: 10,
@@ -61,7 +60,6 @@ const styles = theme => ({
         paddingLeft: 0,
     },
     button: {
-        textTransform: theme.custom.leftMenuTextStyle,
         textDecoration: 'none',
         color: theme.palette.getContrastText(theme.palette.primary.main),
         marginLeft: theme.spacing(1),
@@ -70,7 +68,7 @@ const styles = theme => ({
         marginRight: theme.spacing(1),
     },
     content: {
-        margin: `${theme.spacing.unit * 2}px 0 ${theme.spacing.unit * 2}px 0`,
+        margin: `${theme.spacing(2)}px 0 ${theme.spacing(2)}px 0`,
     },
     head: {
         fontWeight: 200,
@@ -141,7 +139,7 @@ class Scopes extends React.Component {
                         if (value && tableMeta.rowData) {
                             return (
                                 <List component='nav' className={classes.root}>
-                                    {value.map(resource => (
+                                    {value.map((resource) => (
                                         <ListItem button>
                                             <ListItemText primary={resource} />
                                         </ListItem>
@@ -255,19 +253,6 @@ class Scopes extends React.Component {
                                 defaultMessage='Scopes'
                             />
                         </Typography>
-                        <Link to={!isRestricted(['apim:api_create'], api) && url}>
-                            <Button
-                                size='small'
-                                className={classes.button}
-                                disabled={isRestricted(['apim:api_create'], api)}
-                            >
-                                <AddCircle className={classes.buttonIcon} />
-                                <FormattedMessage
-                                    id='Apis.Details.Scopes.Scopes.heading.scope.add_new'
-                                    defaultMessage='Add New Scope'
-                                />
-                            </Button>
-                        </Link>
                     </div>
                     <InlineMessage type='info' height={140}>
                         <div className={classes.contentWrapper}>
@@ -335,7 +320,7 @@ class Scopes extends React.Component {
                                 <FormattedMessage
                                     id='Apis.Details.Scopes.Scopes.update.not.allowed'
                                     defaultMessage={
-                                        '*You are not authorized to update Scopes of'
+                                        '*You are not authorized to update scopes of'
                                         + ' the API due to insufficient permissions'
                                     }
                                 />

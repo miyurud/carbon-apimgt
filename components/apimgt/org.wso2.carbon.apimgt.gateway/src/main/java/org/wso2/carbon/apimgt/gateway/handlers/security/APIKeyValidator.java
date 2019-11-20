@@ -378,7 +378,6 @@ public class APIKeyValidator {
                         if (log.isDebugEnabled()) {
                             log.debug("Resource not found in cache for key: " + resourceCacheKey);
                         }
-                        break;
                     }
                 }
             }

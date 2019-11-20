@@ -32,6 +32,7 @@ import Banner from 'AppComponents/Shared/Banner';
 import APICreateBase from 'AppComponents/Apis/Create/Components/APICreateBase';
 import DefaultAPIForm from 'AppComponents/Apis/Create/Components/DefaultAPIForm';
 import APIProduct from 'AppData/APIProduct';
+import AuthManager from 'AppData/AuthManager';
 
 /**
  * Handle API creation from WSDL.
@@ -121,7 +122,7 @@ function APICreateDefault(props) {
                 },
             };
         }
-        apiData.gatewayEnvironments = settings.environment.map(env => env.name);
+        apiData.gatewayEnvironments = settings.environment.map((env) => env.name);
         if (isWebSocket) {
             apiData.type = 'WS';
         }
@@ -144,6 +145,7 @@ function APICreateDefault(props) {
                         Alert.error(message);
                         setPageError(message);
                     }
+                    console.error(error);
                 });
         } else {
             const newAPI = new API(apiData);
@@ -163,6 +165,10 @@ function APICreateDefault(props) {
                         setPageError(message);
                     }
                     console.error(error);
+                    setIsPublishing(false); // We don't publish if something when wrong
+                })
+                .finally(() => {
+                    setIsCreating(false);
                 });
         }
         return promisedCreatedAPI.finally(() => setIsCreating(false));
@@ -174,27 +180,26 @@ function APICreateDefault(props) {
      */
     function createAndPublish() {
         setIsPublishing(true);
-        createAPI().then(api =>
-            api
-                .publish()
-                .then(() => {
-                    Alert.info('API published successfully');
-                    history.push(`/apis/${api.id}/overview`);
-                })
-                .catch((error) => {
-                    if (error.response) {
-                        Alert.error(error.response.body.description);
-                        setPageError(error.response.body);
-                    } else {
-                        const message = 'Something went wrong while publising the API';
-                        Alert.error(message);
-                        setPageError(message);
-                    }
-                    console.error(error);
-                })
-                .finally(() => {
-                    setIsPublishing(false);
-                }));
+        createAPI().then((api) => api
+            .publish()
+            .then(() => {
+                Alert.info('API published successfully');
+                history.push(`/apis/${api.id}/overview`);
+            })
+            .catch((error) => {
+                if (error.response) {
+                    Alert.error(error.response.body.description);
+                    setPageError(error.response.body);
+                } else {
+                    const message = 'Something went wrong while publishing the API';
+                    Alert.error(message);
+                    setPageError(message);
+                }
+                console.error(error);
+            })
+            .finally(() => {
+                setIsPublishing(false);
+            }));
     }
 
     /**
@@ -207,7 +212,7 @@ function APICreateDefault(props) {
         });
     }
     let pageTitle = (
-        <React.Fragment>
+        <>
             <Typography variant='h5'>
                 <FormattedMessage
                     id='Apis.Create.Default.APICreateDefault.api.heading'
@@ -218,16 +223,16 @@ function APICreateDefault(props) {
                 <FormattedMessage
                     id='Apis.Create.Default.APICreateDefault.api.sub.heading'
                     defaultMessage={
-                        'Create an API by providing a Name, a Version, a Context,' +
-                        ' Backend Endpoint(s) (optional), and Business Plans (optional).'
+                        'Create an API by providing a Name, a Version, a Context,'
+                        + ' Backend Endpoint(s) (optional), and Business Plans (optional).'
                     }
                 />
             </Typography>
-        </React.Fragment>
+        </>
     );
     if (isAPIProduct) {
         pageTitle = (
-            <React.Fragment>
+            <>
                 <Typography variant='h5'>
                     <FormattedMessage
                         id='Apis.Create.Default.APICreateDefault.apiProduct.heading'
@@ -238,16 +243,16 @@ function APICreateDefault(props) {
                     <FormattedMessage
                         id='Apis.Create.Default.APICreateDefault.apiProduct.sub.heading'
                         defaultMessage={
-                            'Create an API Product by providing a Name, a Context,' +
-                            ' and Business Plans (optional).'
+                            'Create an API Product by providing a Name, a Context,'
+                            + ' and Business Plans (optional).'
                         }
                     />
                 </Typography>
-            </React.Fragment>
+            </>
         );
     } else if (isWebSocket) {
         pageTitle = (
-            <React.Fragment>
+            <>
                 <Typography variant='h5'>
                     <FormattedMessage
                         id='Apis.Create.Default.APICreateDefault.webSocket.heading'
@@ -258,12 +263,12 @@ function APICreateDefault(props) {
                     <FormattedMessage
                         id='Apis.Create.Default.APICreateDefault.webSocket.sub.heading'
                         defaultMessage={
-                            'Create a WebSocket API by providing a Name, a Context,' +
-                            ' and Business Plans (optional).'
+                            'Create a WebSocket API by providing a Name, a Context,'
+                            + ' and Business Plans (optional).'
                         }
                     />
                 </Typography>
-            </React.Fragment>
+            </>
         );
     }
 
@@ -273,7 +278,14 @@ function APICreateDefault(props) {
                 {/* Page error banner */}
                 {pageError && (
                     <Grid item xs={11}>
-                        <Banner disableActions dense paperProps={{ elevation: 1 }} type='error' message={pageError} />
+                        <Banner
+                            onClose={() => setPageError(null)}
+                            disableActions
+                            dense
+                            paperProps={{ elevation: 1 }}
+                            type='error'
+                            message={pageError}
+                        />
                     </Grid>
                 )}
                 {/* end of Page error banner */}
@@ -285,6 +297,7 @@ function APICreateDefault(props) {
                         onChange={handleOnChange}
                         api={apiInputs}
                         isAPIProduct={isAPIProduct}
+                        isWebSocket={isWebSocket}
                     />
                 </Grid>
                 <Grid item md={1} xs={0} />
@@ -297,23 +310,27 @@ function APICreateDefault(props) {
                                 disabled={isAPICreateDisabled}
                                 onClick={createAPIOnly}
                             >
-                                Create {isCreating && !isPublishing && <CircularProgress size={24} />}
+                                Create
+                                {' '}
+                                {isCreating && !isPublishing && <CircularProgress size={24} />}
                             </Button>
                         </Grid>
-                        <Grid item>
-                            <Button
-                                id='itest-id-apicreatedefault-createnpublish'
-                                variant='contained'
-                                color='primary'
-                                disabled={!isPublishable || isAPICreateDisabled}
-                                onClick={createAndPublish}
-                            >
-                                {!isPublishing && 'Create & Publish'}
-                                {isPublishing && <CircularProgress size={24} />}
-                                {isCreating && isPublishing && 'Creating API . . .'}
-                                {!isCreating && isPublishing && 'Publishing API . . .'}
-                            </Button>
-                        </Grid>
+                        {!AuthManager.isNotPublisher() && (
+                            <Grid item>
+                                <Button
+                                    id='itest-id-apicreatedefault-createnpublish'
+                                    variant='contained'
+                                    color='primary'
+                                    disabled={!isPublishable || isAPICreateDisabled}
+                                    onClick={createAndPublish}
+                                >
+                                    {!isPublishing && 'Create & Publish'}
+                                    {isPublishing && <CircularProgress size={24} />}
+                                    {isCreating && isPublishing && 'Creating API . . .'}
+                                    {!isCreating && isPublishing && 'Publishing API . . .'}
+                                </Button>
+                            </Grid>
+                        )}
                         <Grid item>
                             <Link to='/apis/'>
                                 <Button variant='text'>

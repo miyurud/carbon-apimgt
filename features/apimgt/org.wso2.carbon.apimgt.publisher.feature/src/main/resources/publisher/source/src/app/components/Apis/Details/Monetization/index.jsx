@@ -11,11 +11,12 @@ import { withRouter } from 'react-router';
 import { Progress } from 'AppComponents/Shared';
 import Alert from 'AppComponents/Shared/Alert';
 import API from 'AppData/api';
+import APIProduct from 'AppData/APIProduct';
 import { isRestricted } from 'AppData/AuthManager';
 
 import BusinessPlans from './BusinessPlans';
 
-const styles = theme => ({
+const styles = (theme) => ({
     root: {
         flexGrow: 1,
     },
@@ -24,10 +25,10 @@ const styles = theme => ({
         flexWrap: 'wrap',
     },
     margin: {
-        margin: theme.spacing.unit,
+        margin: theme.spacing(),
     },
     paper: {
-        padding: theme.spacing.unit * 2,
+        padding: theme.spacing(2),
         textAlign: 'left',
         color: theme.palette.text.secondary,
         paddingBottom: '10px',
@@ -39,10 +40,16 @@ const styles = theme => ({
         minWidth: '50%',
     },
     button: {
-        margin: theme.spacing.unit,
+        margin: theme.spacing(),
     },
 });
 
+/**
+ *
+ *
+ * @class Monetization
+ * @extends {Component}
+ */
 class Monetization extends Component {
     constructor(props) {
         super(props);
@@ -62,53 +69,26 @@ class Monetization extends Component {
 
     getMonetizationData() {
         const { api } = this.props;
-        api.getSettings().then((settings) => {
-            if (settings.monetizationAttributes != null) {
-                this.setState({ monetizationAttributes: settings.monetizationAttributes });
-            }
-        });
-        api.getMonetization(this.props.api.id).then((status) => {
-            this.setState({ monStatus: status.enabled });
-        });
-    }
-
-    /**
-     * Handles the submit action for configuring monetization
-     */
-    handleSubmit() {
-        const { api, intl } = this.props;
-        const properties = this.state.property;
-        const enabled = this.state.monStatus;
-        const body = {
-            enabled,
-            properties,
-        };
-        const promisedMonetizationConf = api.configureMonetizationToApi(this.props.api.id, body);
-        promisedMonetizationConf.then((response) => {
-            const status = JSON.parse(response.data);
-            if (status.enabled) {
-                Alert.info(intl.formatMessage({
-                    id: 'Apis.Details.Monetization.Index.monetization.configured.successfully',
-                    defaultMessage: 'Monetization Enabled Successfully',
-                }));
-            } else {
-                Alert.info(intl.formatMessage({
-                    id: 'Apis.Details.Monetization.Index.monetization.disabled.successfully',
-                    defaultMessage: 'Monetization Disabled Successfully',
-                }));
-            }
-            this.setState({ monStatus: !this.state.monStatus });
-        }).catch((error) => {
-            console.error(error);
-            if (error.response) {
-                Alert.error(error.response.body.description);
-            } else {
-                Alert.error(intl.formatMessage({
-                    id: 'Apis.Details.Monetization.Index.something.went.wrong.while.configuring.monetization',
-                    defaultMessage: 'Something went wrong while configuring monetization',
-                }));
-            }
-        });
+        if (api.apiType === 'APIProduct') {
+            const apiProduct = new APIProduct(api.name, api.context, api.policies);
+            apiProduct.getSettings().then((settings) => {
+                if (settings.monetizationAttributes != null) {
+                    this.setState({ monetizationAttributes: settings.monetizationAttributes });
+                }
+            });
+            apiProduct.getMonetization(this.props.api.id).then((status) => {
+                this.setState({ monStatus: status.enabled });
+            });
+        } else {
+            api.getSettings().then((settings) => {
+                if (settings.monetizationAttributes != null) {
+                    this.setState({ monetizationAttributes: settings.monetizationAttributes });
+                }
+            });
+            api.getMonetization(this.props.api.id).then((status) => {
+                this.setState({ monStatus: status.enabled });
+            });
+        }
     }
 
     handleChange = (event) => {
@@ -123,6 +103,81 @@ class Monetization extends Component {
             return { property };
         });
     };
+
+    /**
+     * Handles the submit action for configuring monetization
+     */
+    handleSubmit() {
+        const { api, intl } = this.props;
+        if (api.apiType === 'APIProduct') {
+            const properties = this.state.property;
+            const enabled = this.state.monStatus;
+            const body = {
+                enabled,
+                properties,
+            };
+            const apiProduct = new APIProduct(api.name, api.context, api.policies);
+            const promisedMonetization = apiProduct.configureMonetizationToApiProduct(api.id, body);
+            promisedMonetization.then((response) => {
+                const status = JSON.parse(response.data);
+                if (status.enabled) {
+                    Alert.info(intl.formatMessage({
+                        id: 'Apis.Details.Monetization.Index.monetization.configured.successfully',
+                        defaultMessage: 'Monetization Enabled Successfully',
+                    }));
+                } else {
+                    Alert.info(intl.formatMessage({
+                        id: 'Apis.Details.Monetization.Index.monetization.disabled.successfully',
+                        defaultMessage: 'Monetization Disabled Successfully',
+                    }));
+                }
+                this.setState((cState) => ({ monStatus: !cState.monStatus }));
+            }).catch((error) => {
+                console.error(error);
+                if (error.response) {
+                    Alert.error(error.response.body.description);
+                } else {
+                    Alert.error(intl.formatMessage({
+                        id: 'Apis.Details.Monetization.Index.something.went.wrong.while.configuring.monetization',
+                        defaultMessage: 'Something went wrong while configuring monetization',
+                    }));
+                }
+            });
+        } else {
+            const properties = this.state.property;
+            const enabled = this.state.monStatus;
+            const body = {
+                enabled,
+                properties,
+            };
+            const promisedMonetizationConf = api.configureMonetizationToApi(this.props.api.id, body);
+            promisedMonetizationConf.then((response) => {
+                const status = JSON.parse(response.data);
+                if (status.enabled) {
+                    Alert.info(intl.formatMessage({
+                        id: 'Apis.Details.Monetization.Index.monetization.configured.successfully',
+                        defaultMessage: 'Monetization Enabled Successfully',
+                    }));
+                } else {
+                    Alert.info(intl.formatMessage({
+                        id: 'Apis.Details.Monetization.Index.monetization.disabled.successfully',
+                        defaultMessage: 'Monetization Disabled Successfully',
+                    }));
+                }
+                this.setState((cState) => ({ monStatus: !cState.monStatus }));
+            }).catch((error) => {
+                console.error(error);
+                if (error.response) {
+                    Alert.error(error.response.body.description);
+                } else {
+                    Alert.error(intl.formatMessage({
+                        id: 'Apis.Details.Monetization.Index.something.went.wrong.while.configuring.monetization',
+                        defaultMessage: 'Something went wrong while configuring monetization',
+                    }));
+                }
+            });
+        }
+    }
 
     render() {
         const { api, classes } = this.props;
@@ -158,7 +213,7 @@ class Monetization extends Component {
                 </Typography>
                 <form method='post' onSubmit={this.handleSubmit}>
                     <FormControlLabel
-                        control={
+                        control={(
                             <Checkbox
                                 disabled={isRestricted(['apim:api_publish'], api)}
                                 id='monStatus'
@@ -168,7 +223,7 @@ class Monetization extends Component {
                                 value={monStatus}
                                 color='primary'
                             />
-                        }
+                        )}
                         label='Enable Monetization'
                     />
                     <Grid>
@@ -181,8 +236,8 @@ class Monetization extends Component {
                                     />
                                 </Typography>
                                 {
-                                    (monetizationAttributes.length > 0) ?
-                                        (monetizationAttributes.map((monetizationAttribute, i) => (
+                                    (monetizationAttributes.length > 0)
+                                        ? (monetizationAttributes.map((monetizationAttribute, i) => (
                                             <TextField
                                                 disabled={isRestricted(['apim:api_publish'], api)}
                                                 fullWidth
@@ -199,8 +254,8 @@ class Monetization extends Component {
                                         : (
                                             <Typography gutterBottom>
                                                 <FormattedMessage
-                                                    id={'Apis.Details.Monetization.Index.there.are.no' +
-                                                        ' .monetization.properties.configured'}
+                                                    id={'Apis.Details.Monetization.Index.there.are.no'
+                                                        + ' .monetization.properties.configured'}
                                                     defaultMessage='There are no monetization properties configured'
                                                 />
                                             </Typography>
@@ -212,11 +267,11 @@ class Monetization extends Component {
                     <Grid>
                         <Paper className={classes.paper}>
                             <Grid item xs={12} className={classes.grid}>
-                                {<BusinessPlans api={api} monStatus={monStatus} />}
+                                <BusinessPlans api={api} monStatus={monStatus} />
                             </Grid>
                         </Paper>
                     </Grid>
-                    <Button onClick={this.handleSubmit} color='primary' variant='contained' className={classes.button} >
+                    <Button onClick={this.handleSubmit} color='primary' variant='contained' className={classes.button}>
                         <FormattedMessage
                             id='Apis.Details.Monetization.Index.save'
                             defaultMessage='Save'

@@ -33,7 +33,7 @@ import { withAPI } from 'AppComponents/Apis/Details/components/ApiContext';
 import { isRestricted } from 'AppData/AuthManager';
 import APIValidation from 'AppData/APIValidation';
 
-const styles = theme => ({
+const styles = (theme) => ({
     FormControl: {
         padding: 0,
         width: '100%',
@@ -79,18 +79,17 @@ class BusinessInformation extends React.Component {
             businessOwnerEmail,
             technicalOwner,
             technicalOwnerEmail,
-            formUpdated: false,
         };
-        this.isValidBusinessOwnerName = true;
+        this.isFormUpdated = false;
         this.isValidBusinessOwnerEmail = true;
         this.isValidTechnicalOwnerEmail = true;
     }
 
-    isNotValid = () => {
-        return !(this.isValidBusinessOwnerName && this.isValidBusinessOwnerEmail && this.isValidTechnicalOwnerEmail);
+    isValid = () => {
+        return (this.isValidBusinessOwnerEmail && this.isValidTechnicalOwnerEmail && this.isFormUpdated);
     }
 
-    handleChange = name => (event) => {
+    handleChange = (name) => (event) => {
         let { value } = event.target;
         const { checked } = event.target;
         if (name === 'accessControlRoles' || name === 'visibleRoles') {
@@ -100,23 +99,17 @@ class BusinessInformation extends React.Component {
         } else if (name === 'responseCaching') {
             value = checked ? 'Enabled' : 'Disabled';
         }
-        // Validate whether mandatory fields are filled and given valid email addresses.
-        if (name === 'businessOwner') {
-            const nameStatus = APIValidation.name.validate(value).error;
-            this.isValidBusinessOwnerName = (nameStatus === null);
-        }
+        // Validate whether given email addresses are valid.
         if (name === 'businessOwnerEmail') {
             const emailStatus = APIValidation.email.validate(value).error;
-            this.isValidBusinessOwnerEmail = (emailStatus === null);
+            this.isValidBusinessOwnerEmail = (emailStatus === null || value === '');
         }
         if (name === 'technicalOwnerEmail') {
             const emailStatus = APIValidation.email.validate(value).error;
             this.isValidTechnicalOwnerEmail = (emailStatus === null || value === '');
         }
-        this.setState({
-            [name]: value,
-            formUpdated: true,
-        });
+        this.isFormUpdated = true;
+        this.setState({ [name]: value });
     };
 
     /**
@@ -145,11 +138,11 @@ class BusinessInformation extends React.Component {
     render() {
         const { classes, api, updateAPI } = this.props;
         const {
-            businessOwner, businessOwnerEmail, technicalOwner, technicalOwnerEmail, formUpdated,
+            businessOwner, businessOwnerEmail, technicalOwner, technicalOwnerEmail,
         } = this.state;
 
         return (
-            <React.Fragment>
+            <>
                 <Container maxWidth='md'>
                     <Box mb={3}>
                         <Typography variant='h4'>
@@ -169,37 +162,29 @@ class BusinessInformation extends React.Component {
                         <Box px={8} py={5}>
                             <form noValidate autoComplete='off'>
                                 <TextField
-                                    error={!this.isValidBusinessOwnerName}
                                     disabled={isRestricted(['apim:api_create', 'apim:api_publish'], api)}
                                     fullWidth
                                     id='name'
-                                    label={
-                                        <React.Fragment>
+                                    label={(
+                                        <>
                                             <FormattedMessage
                                                 id={
-                                                    'Apis.Details.BusinessInformation.BusinessInformation' +
-                                                    '.business.owner.name'
+                                                    'Apis.Details.BusinessInformation.BusinessInformation'
+                                                    + '.business.owner.name'
                                                 }
                                                 defaultMessage='Business Owner'
                                             />
-                                        </React.Fragment>
-                                    }
-                                    helperText={this.isValidBusinessOwnerName ?
+                                        </>
+                                    )}
+                                    helperText={(
                                         <FormattedMessage
                                             id={
-                                                'Apis.Details.BusinessInformation.BusinessInformation' +
-                                                '.business.owner.name.helper.text'
+                                                'Apis.Details.BusinessInformation.BusinessInformation'
+                                                + '.business.owner.name.helper.text'
                                             }
                                             defaultMessage='Provide the name of the business owner'
-                                        /> :
-                                        <FormattedMessage
-                                            id={
-                                                'Apis.Details.BusinessInformation.BusinessInformation' +
-                                                '.business.owner.name.helper.text.error'
-                                            }
-                                            defaultMessage='Name of the business owner should not be empty'
                                         />
-                                    }
+                                    )}
                                     type='text'
                                     name='name'
                                     margin='normal'
@@ -213,34 +198,37 @@ class BusinessInformation extends React.Component {
                                     disabled={isRestricted(['apim:api_create', 'apim:api_publish'], api)}
                                     fullWidth
                                     id='name'
-                                    label={
-                                        <React.Fragment>
+                                    label={(
+                                        <>
                                             <FormattedMessage
                                                 id={
-                                                    'Apis.Details.BusinessInformation.BusinessInformation.' +
-                                                    'business.owner.email'
+                                                    'Apis.Details.BusinessInformation.BusinessInformation.'
+                                                    + 'business.owner.email'
                                                 }
                                                 defaultMessage='Business Owner Email'
                                             />
-                                        </React.Fragment>
-                                    }
-                                    helperText={this.isValidBusinessOwnerEmail ?
-                                        <FormattedMessage
-                                            id={
-                                                'Apis.Details.BusinessInformation.BusinessInformation' +
-                                                '.business.owner.email.helper.text'
-                                            }
-                                            defaultMessage='Provide the email of the business owner'
-                                        /> :
-                                        <FormattedMessage
-                                            id={
-                                                'Apis.Details.BusinessInformation.BusinessInformation' +
-                                                '.business.owner.email.helper.text' +
-                                                '.error'
-                                            }
-                                            defaultMessage='Please enter a valid email address'
-                                        />
-                                    }
+                                        </>
+                                    )}
+                                    helperText={this.isValidBusinessOwnerEmail
+                                        ? (
+                                            <FormattedMessage
+                                                id={
+                                                    'Apis.Details.BusinessInformation.BusinessInformation'
+                                                + '.business.owner.email.helper.text'
+                                                }
+                                                defaultMessage='Provide the email of the business owner'
+                                            />
+                                        )
+                                        : (
+                                            <FormattedMessage
+                                                id={
+                                                    'Apis.Details.BusinessInformation.BusinessInformation'
+                                                + '.business.owner.email.helper.text'
+                                                + '.error'
+                                                }
+                                                defaultMessage='Please enter a valid email address'
+                                            />
+                                        )}
                                     type='email'
                                     name='name'
                                     margin='normal'
@@ -252,26 +240,26 @@ class BusinessInformation extends React.Component {
                                     disabled={isRestricted(['apim:api_create', 'apim:api_publish'], api)}
                                     fullWidth
                                     id='name'
-                                    label={
-                                        <React.Fragment>
+                                    label={(
+                                        <>
                                             <FormattedMessage
                                                 id={
-                                                    'Apis.Details.BusinessInformation.BusinessInformation' +
-                                                    '.technical.owner.name'
+                                                    'Apis.Details.BusinessInformation.BusinessInformation'
+                                                    + '.technical.owner.name'
                                                 }
                                                 defaultMessage='Technical Owner'
                                             />
-                                        </React.Fragment>
-                                    }
-                                    helperText={
+                                        </>
+                                    )}
+                                    helperText={(
                                         <FormattedMessage
                                             id={
-                                                'Apis.Details.BusinessInformation.BusinessInformation' +
-                                                '.technical.owner.name.helper.text'
+                                                'Apis.Details.BusinessInformation.BusinessInformation'
+                                                + '.technical.owner.name.helper.text'
                                             }
                                             defaultMessage='Provide the name of the technical owner'
                                         />
-                                    }
+                                    )}
                                     type='text'
                                     name='name'
                                     margin='normal'
@@ -284,32 +272,35 @@ class BusinessInformation extends React.Component {
                                     disabled={isRestricted(['apim:api_create', 'apim:api_publish'], api)}
                                     fullWidth
                                     id='name'
-                                    label={
+                                    label={(
                                         <FormattedMessage
                                             id={
-                                                'Apis.Details.BusinessInformation.BusinessInformation' +
-                                                '.technical.owner.email'
+                                                'Apis.Details.BusinessInformation.BusinessInformation'
+                                                + '.technical.owner.email'
                                             }
                                             defaultMessage='Technical Owner Email'
                                         />
-                                    }
-                                    helperText={this.isValidTechnicalOwnerEmail ?
-                                        <FormattedMessage
-                                            id={
-                                                'Apis.Details.BusinessInformation.BusinessInformation' +
-                                                '.technical.owner.email.helper.text'
-                                            }
-                                            defaultMessage='Provide the email of the technical owner'
-                                        /> :
-                                        <FormattedMessage
-                                            id={
-                                                'Apis.Details.BusinessInformation.BusinessInformation' +
-                                                '.technical.owner.email.helper.text' +
-                                                '.error'
-                                            }
-                                            defaultMessage='Please enter a valid email address'
-                                        />
-                                    }
+                                    )}
+                                    helperText={this.isValidTechnicalOwnerEmail
+                                        ? (
+                                            <FormattedMessage
+                                                id={
+                                                    'Apis.Details.BusinessInformation.BusinessInformation'
+                                                + '.technical.owner.email.helper.text'
+                                                }
+                                                defaultMessage='Provide the email of the technical owner'
+                                            />
+                                        )
+                                        : (
+                                            <FormattedMessage
+                                                id={
+                                                    'Apis.Details.BusinessInformation.BusinessInformation'
+                                                + '.technical.owner.email.helper.text'
+                                                + '.error'
+                                                }
+                                                defaultMessage='Please enter a valid email address'
+                                            />
+                                        )}
                                     type='email'
                                     name='name'
                                     margin='normal'
@@ -333,8 +324,8 @@ class BusinessInformation extends React.Component {
                                                 color='primary'
                                                 onClick={() => this.handleSubmit(updateAPI)}
                                                 disabled={
-                                                    isRestricted(['apim:api_create', 'apim:api_publish'], api) ||
-                                                    this.isNotValid() || !formUpdated
+                                                    isRestricted(['apim:api_create', 'apim:api_publish'], api)
+                                                    || !this.isValid()
                                                 }
                                             >
                                                 <FormattedMessage id='save' defaultMessage='Save' />
@@ -344,9 +335,9 @@ class BusinessInformation extends React.Component {
                                     <Grid item>
                                         <Link
                                             to={
-                                                (api.apiType === API.CONSTS.APIProduct ? '/api-products/' : '/apis/') +
-                                                api.id +
-                                                '/overview'
+                                                (api.apiType === API.CONSTS.APIProduct ? '/api-products/' : '/apis/')
+                                                + api.id
+                                                + '/overview'
                                             }
                                         >
                                             <Button>
@@ -359,7 +350,7 @@ class BusinessInformation extends React.Component {
                         </Box>
                     </Paper>
                 </Container>
-            </React.Fragment>
+            </>
         );
     }
 }

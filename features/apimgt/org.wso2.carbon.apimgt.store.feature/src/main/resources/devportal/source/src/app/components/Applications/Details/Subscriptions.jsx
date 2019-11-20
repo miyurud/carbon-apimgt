@@ -36,6 +36,7 @@ import APIList from 'AppComponents/Apis/Listing/APICardView';
 import ResourceNotFound from 'AppComponents/Base/Errors/ResourceNotFound';
 import Subscription from 'AppData/Subscription';
 import Api from 'AppData/api';
+import { app } from 'Settings';
 import SubscriptionTableData from './SubscriptionTableData';
 
 /**
@@ -196,7 +197,8 @@ class Subscriptions extends React.Component {
                 const { list } = response.obj;
                 const subscribedIds = this.getIdsOfSubscribedEntities();
                 const unsubscribedAPIList = list
-                    .filter(api => !subscribedIds.includes(api.id) && !api.advertiseInfo.advertised)
+                    .filter(api => (!subscribedIds.includes(api.id) && !api.advertiseInfo.advertised)
+                     && api.isSubscriptionAvailable)
                     .map((filteredApi) => {
                         return {
                             Id: filteredApi.id,
@@ -243,10 +245,18 @@ class Subscriptions extends React.Component {
                         defaultMessage: 'Error occurred during subscription',
                     }));
                 } else {
-                    Alert.info(intl.formatMessage({
-                        id: 'Applications.Details.Subscriptions.subscription.successful',
-                        defaultMessage: 'Subscription successful',
-                    }));
+                    if (response.body.status === 'ON_HOLD') {
+                        Alert.info(intl.formatMessage({
+                            defaultMessage: 'Your subscription request has been submitted and is now awaiting ' +
+                            'approval.',
+                            id: 'subscription.pending',
+                        }));
+                    } else {
+                        Alert.info(intl.formatMessage({
+                            id: 'Applications.Details.Subscriptions.subscription.successful',
+                            defaultMessage: 'Subscription successful',
+                        }));
+                    }
                     this.updateSubscriptions(applicationId);
                 }
             })
@@ -270,7 +280,7 @@ class Subscriptions extends React.Component {
         const { isAuthorize } = this.state;
 
         if (!isAuthorize) {
-            window.location = '/devportal/services/configs';
+            window.location = app.context + '/services/configs';
         }
 
         const {
@@ -294,7 +304,7 @@ class Subscriptions extends React.Component {
                     </Typography>
 
                     <Grid container className='tab-grid' spacing={2}>
-                        <Grid item xs={5} className={classes.cardGrid}>
+                        <Grid item xs={4} className={classes.cardGrid}>
                             <APIList
                                 apisNotFound={apisNotFound}
                                 unsubscribedAPIList={unsubscribedAPIList}
@@ -302,7 +312,7 @@ class Subscriptions extends React.Component {
                                 handleSubscribe={(app, api, policy) => this.handleSubscribe(app, api, policy)}
                             />
                         </Grid>
-                        <Grid item xs={7} xl={10}>
+                        <Grid item xs={8} xl={11}>
                             <Card className={classes.card}>
                                 <CardActions>
                                     <Typography variant='h6' gutterBottom className={classes.cardTitle}>
@@ -323,7 +333,14 @@ class Subscriptions extends React.Component {
                                                     <TableCell className={classes.firstCell}>
                                                         <FormattedMessage
                                                             id='Applications.Details.Subscriptions.api.name'
-                                                            defaultMessage='API Name'
+                                                            defaultMessage='API'
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <FormattedMessage
+                                                            id={`Applications.Details.Subscriptions
+                                                                    .subscription.tier`}
+                                                            defaultMessage='Lifecycle State'
                                                         />
                                                     </TableCell>
                                                     <TableCell>
@@ -336,7 +353,7 @@ class Subscriptions extends React.Component {
                                                     <TableCell>
                                                         <FormattedMessage
                                                             id='Applications.Details.Subscriptions.Status'
-                                                            defaultMessage='Status'
+                                                            defaultMessage='Subscription Status'
                                                         />
                                                     </TableCell>
                                                     <TableCell>

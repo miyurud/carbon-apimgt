@@ -17,44 +17,29 @@
  */
 
 import React from 'react';
+import { useTheme, makeStyles } from '@material-ui/core/styles';
+import Divider from '@material-ui/core/Divider';
+import Typography from '@material-ui/core/Typography';
+import { FormattedMessage } from 'react-intl';
+import { TagCloud } from 'react-tagcloud';
 import PropTypes from 'prop-types';
-import { withStyles } from '@material-ui/core/styles';
-import ApiTagThumb from './ApiTagThumb';
+import { useHistory } from 'react-router-dom';
 
-const styles = theme => ({
-    root: {
-        marginTop: theme.spacing.unit * 2,
-        padding: theme.spacing.unit * 3,
-        paddingLeft: theme.spacing.unit * 3,
-        width: theme.spacing.unit * 30,
-    },
-    tagCloudWrapper: {
-        display: 'flex',
-        flexDirection: 'row',
-        paddingLeft: theme.spacing.unit * 3,
-    },
-    listContentWrapper: {
-        padding: `0 ${theme.spacing.unit * 3}px`,
-    },
-    mainTitle: {
-        paddingTop: 10,
-        paddingBottom: theme.spacing.unit * 3,
-    },
-    selectedTagSpacing: {
-        paddingLeft: theme.spacing.unit * 3,
-    },
+const useStyles = makeStyles(theme => ({
     clickablePointer: {
         cursor: 'pointer',
+        padding: theme.spacing(1),
     },
-
-    tagedApisWrapper: {
+    filterTitle: {
+        fontWeight: 200,
+        paddingLeft: theme.spacing(2),
+        background: theme.custom.tagCloud.leftMenu.titleBackground,
+        color: theme.palette.getContrastText(theme.custom.tagCloud.leftMenu.titleBackground),
+        height: theme.custom.infoBar.height,
+        alignItems: 'center',
         display: 'flex',
-        flexDirection: 'row',
-        paddingLeft: theme.spacing.unit * 3,
-        flexWrap: 'wrap',
     },
-
-});
+}));
 
 /**
  * Component used to handle API Tag Cloud
@@ -62,16 +47,26 @@ const styles = theme => ({
  * @extends {React.Component}
  * @param {any} value @inheritDoc
  */
-class ApiTagCloud extends React.Component {
-    /**
-     * @param {*} props properties
-     */
-    constructor(props) {
-        super(props);
-        this.state = {
-            selectedTag: null,
-        };
-        this.handleOnClick = this.handleOnClick.bind(this);
+function ApiTagCloud(props) {
+    const classes = useStyles();
+    const theme = useTheme();
+    const {
+        custom: {
+            tagWise: { key, active },
+            tagCloud: { colorOptions },
+        },
+    } = theme;
+    const history = useHistory();
+
+    const { allTags } = props;
+    let apisTagWithoutGroups = null;
+    if (allTags.count !== 0) {
+        // Remve the tags with a sufix '-group' to ignore the
+        if (active) {
+            apisTagWithoutGroups = allTags.filter(item => item.value.search(key) === -1);
+        } else {
+            apisTagWithoutGroups = allTags;
+        }
     }
 
     /**
@@ -79,71 +74,37 @@ class ApiTagCloud extends React.Component {
      * @param {String} tag selected tag
      * @memberof ApiTagCloud
      */
-    handleOnClick = (tag) => {
-        this.setState({ selectedTag: tag.value });
+    const handleOnClick = (tag) => {
+        const tagSearchURL = `/apis?offset=0&query=tag:${tag.value}`;
+        history.push(tagSearchURL);
     };
 
-    /**
-     * @returns {React.Component}
-     * @memberof ApiTagCloud
-     */
-    render() {
-        const {
-            classes, data, listType,
-        } = this.props;
-        const tagWiseURL = '/apis?limit=10&offset=0&query=tag';
-        return (
-            <div className={classes.tagedApisWrapper}>
-                {/* Todo: api tag wise grouping */}
-                {/* {theme.custom.tagWiseMode === true && data && (
-                    <div className={classes.listContentWrapper}>
-                        <div>
-                            <div>
-                                <Typography variant='h4' className={classes.mainTitle}>
-                                    <FormattedMessage
-                                        defaultMessage='Tags'
-                                        id='Apis.Listing.ApiTagCloud.tags.heading'
-                                    />
-                                </Typography>
-                            </div>
-                            <div>
-                                <TagCloud
-                                    minSize={18}
-                                    maxSize={40}
-                                    colorOptions={Coloroptions}
-                                    tags={data}
-                                    shuffle={false}
-                                    className={classes.clickablePointer}
-                                    onClick={tag => this.handleOnClick(tag)}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                )}
-                { theme.custom.tagWiseMode === true && selectedTag && (
-                    <div className={classes.selectedTagSpacing}>
-                        <Typography variant='h4' className={classes.mainTitle}>
-                            {' ('}
-                            {selectedTag}
-                            {') '}
-                        </Typography>
-                    </div>
-                )}
-                <div /> */}
-                {Object.keys(data).map((key) => {
-                    return <ApiTagThumb tag={data[key]} listType={listType} path={tagWiseURL} />;
-                })}
-            </div>
-        );
-    }
+    return (
+        apisTagWithoutGroups && (
+            <React.Fragment>
+                <Typography variant='h6' gutterBottom className={classes.filterTitle}>
+                    <FormattedMessage defaultMessage='Tag Cloud' id='Apis.Listing.ApiTagCloud.title' />
+                </Typography>
+                <TagCloud
+                    minSize={14}
+                    maxSize={25}
+                    colorOptions={colorOptions}
+                    tags={allTags}
+                    shuffle={false}
+                    className={classes.clickablePointer}
+                    onClick={tag => handleOnClick(tag)}
+                />
+            </React.Fragment>
+        )
+    );
 }
 
 ApiTagCloud.propTypes = {
     classes: PropTypes.shape({}).isRequired,
     tag: PropTypes.shape({}).isRequired,
-    theme: PropTypes.shape({}).isRequired,
     listType: PropTypes.string.isRequired,
-    data: PropTypes.shape({}).isRequired,
+    apiType: PropTypes.string.isRequired,
+    allTags: PropTypes.shape({}).isRequired,
 };
 
-export default withStyles(styles, { withTheme: true })(ApiTagCloud);
+export default ApiTagCloud;

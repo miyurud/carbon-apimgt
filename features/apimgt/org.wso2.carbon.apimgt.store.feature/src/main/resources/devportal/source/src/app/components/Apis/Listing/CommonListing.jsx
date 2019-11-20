@@ -23,9 +23,14 @@ import IconButton from '@material-ui/core/IconButton';
 import Icon from '@material-ui/core/Icon';
 import { withStyles } from '@material-ui/core/styles';
 import classNames from 'classnames';
-import CustomIcon from '../../Shared/CustomIcon';
+import CustomIcon from 'AppComponents/Shared/CustomIcon';
+import Settings from 'AppComponents/Shared/SettingsContext';
+import API from 'AppData/api';
+import ApiBreadcrumbs from './ApiBreadcrumbs';
 import ApiTableView from './ApiTableView';
 import { ApiContext } from '../Details/ApiContext';
+import TagCloudListingTags from './TagCloudListingTags';
+import ApiTagCloud from './ApiTagCloud';
 
 const styles = theme => ({
     rightIcon: {
@@ -64,17 +69,78 @@ const styles = theme => ({
     mainTitleWrapper: {
         flexGrow: 1,
     },
-    content: {
-        flexGrow: 1,
-    },
     listContentWrapper: {
         padding: `0 ${theme.spacing.unit * 3}px`,
+        display: 'flex',
     },
     iconDefault: {
         color: theme.palette.getContrastText(theme.custom.infoBar.background),
     },
     iconSelected: {
         color: theme.custom.infoBar.listGridSelectedColor,
+    },
+    content: {
+        flexGrow: 1,
+        display: 'flex',
+        flex: 1,
+        flexDirection: 'column',
+        paddingBottom: theme.spacing.unit * 3,
+    },
+    contentWithTags: {
+        marginLeft: theme.custom.tagCloud.leftMenu.width,
+    },
+    contentWithoutTags: {
+        marginLeft: 0,
+    },
+    contentWithTagsHidden: {
+        marginLeft: theme.custom.tagCloud.leftMenu.sliderWidth,
+    },
+    LeftMenu: {
+        backgroundColor: theme.custom.tagCloud.leftMenu.background,
+        color: theme.custom.tagCloud.leftMenu.color,
+        textAlign: 'left',
+        fontFamily: theme.typography.fontFamily,
+        position: 'absolute',
+        bottom: 0,
+        paddingLeft: 0,
+        width: theme.custom.tagCloud.leftMenu.width,
+        top: 0,
+        left: 0,
+        overflowY: 'auto',
+    },
+    LeftMenuForSlider: {
+        backgroundColor: theme.custom.tagCloud.leftMenu.background,
+        color: theme.custom.tagCloud.leftMenu.color,
+        textAlign: 'left',
+        fontFamily: theme.typography.fontFamily,
+        position: 'absolute',
+        bottom: 0,
+        paddingLeft: 0,
+        width: theme.custom.tagCloud.leftMenu.sliderWidth,
+        top: 0,
+        left: 0,
+        overflowY: 'auto',
+        display: 'flex',
+    },
+    sliderButton: {
+        fontWeight: 200,
+        background: theme.custom.tagCloud.leftMenu.sliderBackground,
+        color: theme.palette.getContrastText(theme.custom.tagCloud.leftMenu.sliderBackground),
+        height: theme.custom.infoBar.height,
+        alignItems: 'center',
+        display: 'flex',
+        position: 'absolute',
+        right: 0,
+        cursor: 'pointer',
+    },
+    rotatedText: {
+        transform: 'rotate(270deg)',
+        transformOrigin: 'left bottom 0',
+        position: 'absolute',
+        whiteSpace: 'nowrap',
+        top: theme.custom.infoBar.height * 2,
+        marginLeft: 23,
+        cursor: 'pointer',
     },
 });
 
@@ -85,6 +151,8 @@ const styles = theme => ({
  * @extends {Component}
  */
 class CommonListing extends React.Component {
+    static contextType = Settings;
+
     /**
      * Constructor
      *
@@ -94,6 +162,9 @@ class CommonListing extends React.Component {
         super(props);
         this.state = {
             listType: props.theme.custom.defaultApiView,
+            allTags: null,
+            showLeftMenu: false,
+            isMonetizationEnabled: false,
         };
     }
 
@@ -106,6 +177,35 @@ class CommonListing extends React.Component {
     setListType = (value) => {
         this.setState({ listType: value });
     };
+    /**
+     *
+     * Get all tags
+     * @memberof CommonListing
+     */
+    componentDidMount() {
+        const restApiClient = new API();
+        const promisedTags = restApiClient.getAllTags();
+        promisedTags
+            .then((response) => {
+                this.setState({ allTags: response.body.list });
+            })
+            .catch((error) => {
+                console.log(error);
+            });
+        this.isMonetizationEnabled();
+    }
+    toggleLeftMenu = () => {
+        this.setState(prevState => ({ showLeftMenu: !prevState.showLeftMenu }));
+    };
+
+    /**
+     * retrieve Settings from the context and check the monetization enabled
+     */
+    isMonetizationEnabled = () => {
+        const settingsContext = this.context;
+        const enabled = settingsContext.settings.monetizationEnabled;
+        this.setState({ isMonetizationEnabled: enabled });
+    }
 
     /**
      *
@@ -121,60 +221,120 @@ class CommonListing extends React.Component {
             classes,
             location: { search },
         } = this.props;
-        const { listType } = this.state;
-        const strokeColorMain = theme.palette.getContrastText(theme.palette.background.paper);
+        const {
+            custom: {
+                tagWise: { key, active, style },
+                tagCloud: { active: tagCloudActive },
+            },
+        } = theme;
+        const { listType, allTags, showLeftMenu, isMonetizationEnabled } = this.state;
+        const strokeColorMain = theme.palette.getContrastText(theme.custom.infoBar.background);
+        const searchParam = new URLSearchParams(search);
+        const searchQuery = searchParam.get('query');
+        let selectedTag = null;
+        if (search && searchQuery !== null) {
+            // For the tagWise search
+            if (active && key) {
+                const splits = searchQuery.split(':');
+                if (splits.length > 1 && splits[1].search(key) != -1) {
+                    const splitTagArray = splits[1].split(key);
+                    if (splitTagArray.length > 0) {
+                        selectedTag = splitTagArray[0];
+                    }
+                } else if (splits.length > 1 && splits[0] === 'tag') {
+                    selectedTag = splits[1];
+                }
+            }
+        }
+        const tagPaneVisible = allTags && allTags.length > 0 && (tagCloudActive || active);
         return (
-            <main className={classes.content}>
-                <div className={classes.appBar}>
-                    <div className={classes.mainIconWrapper}>
-                        <CustomIcon strokeColor={strokeColorMain} width={42} height={42} icon='api' />
+            <React.Fragment>
+                {tagPaneVisible && showLeftMenu && (
+                    <div className={classes.LeftMenu}>
+                        <div className={classes.sliderButton} onClick={this.toggleLeftMenu}>
+                            <Icon>keyboard_arrow_left</Icon>
+                        </div>
+                        {active && <TagCloudListingTags allTags={allTags} />}
+                        {tagCloudActive && <ApiTagCloud allTags={allTags} />}
                     </div>
-                    <div className={classes.mainTitleWrapper}>
-                        <Typography variant='h4' className={classes.mainTitle}>
-                            <FormattedMessage defaultMessage='APIs' id='Apis.Listing.Listing.apis.main' />
-                        </Typography>
-                        {apis && (
-                            <Typography variant='caption' gutterBottom align='left'>
-                                <FormattedMessage defaultMessage='Displaying' id='Apis.Listing.Listing.displaying' />
-                                {apis.count}
-                                <FormattedMessage defaultMessage='APIs' id='Apis.Listing.Listing.apis.count' />
+                )}
+                {tagPaneVisible && !showLeftMenu && (
+                    <div className={classes.LeftMenuForSlider}>
+                        <div className={classes.sliderButton} onClick={this.toggleLeftMenu}>
+                            <Icon>keyboard_arrow_right</Icon>
+                        </div>
+                        <div className={classes.rotatedText} onClick={this.toggleLeftMenu}>
+                            <FormattedMessage defaultMessage='Tag Cloud' id='Apis.Listing.Listing.ApiTagCloud.title' />
+                        </div>
+                    </div>
+                )}
+
+                <main
+                    className={classNames(
+                        classes.content,
+                        { [classes.contentWithoutTags]: !tagPaneVisible || !showLeftMenu },
+                        { [classes.contentWithTagsHidden]: tagPaneVisible && !showLeftMenu },
+                        { [classes.contentWithTags]: tagPaneVisible && showLeftMenu },
+                    )}
+                    id='commonListing'
+                >
+                    <div className={classes.appBar} id='commonListingAppBar'>
+                        <div className={classes.mainIconWrapper}>
+                            <CustomIcon strokeColor={strokeColorMain} width={42} height={42} icon='api' />
+                        </div>
+                        <div className={classes.mainTitleWrapper} id='mainTitleWrapper'>
+                            <Typography variant='h4' className={classes.mainTitle}>
+                                <FormattedMessage defaultMessage='APIs' id='Apis.Listing.Listing.apis.main' />
                             </Typography>
+                            {apis && (
+                                <Typography variant='caption' gutterBottom align='left' id='apiCountDisplay'>
+                                    <FormattedMessage
+                                        defaultMessage='Displaying'
+                                        id='Apis.Listing.Listing.displaying'
+                                    />
+                                    {apis.count}
+                                    <FormattedMessage defaultMessage='APIs' id='Apis.Listing.Listing.apis.count' />
+                                </Typography>
+                            )}
+                        </div>
+                        <div className={classes.buttonRight} id='listGridWrapper'>
+                            <IconButton className={classes.button} onClick={() => this.setListType('list')}>
+                                <Icon
+                                    className={classNames(
+                                        { [classes.iconSelected]: listType === 'list' },
+                                        { [classes.iconDefault]: listType === 'grid' },
+                                    )}
+                                >
+                                    list
+                                </Icon>
+                            </IconButton>
+                            <IconButton className={classes.button} onClick={() => this.setListType('grid')}>
+                                <Icon
+                                    className={classNames(
+                                        { [classes.iconSelected]: listType === 'grid' },
+                                        { [classes.iconDefault]: listType === 'list' },
+                                    )}
+                                >
+                                    grid_on
+                                </Icon>
+                            </IconButton>
+                        </div>
+                    </div>
+                    {active && allTags && allTags.length > 0 && <ApiBreadcrumbs selectedTag={selectedTag} />}
+                    <div className={classes.listContentWrapper}>
+                        {listType === 'grid' && (
+                            <ApiContext.Provider value={{ apiType, isMonetizationEnabled }}>
+                                <ApiTableView gridView query={search} />
+                            </ApiContext.Provider>
+                        )}
+                        {listType === 'list' && (
+                            <ApiContext.Provider value={{ apiType, isMonetizationEnabled }}>
+                                <ApiTableView gridView={false} query={search} />
+                            </ApiContext.Provider>
                         )}
                     </div>
-                    <div className={classes.buttonRight}>
-                        <IconButton className={classes.button} onClick={() => this.setListType('list')}>
-                            <Icon
-                                className={classNames(
-                                    { [classes.iconSelected]: listType === 'list' },
-                                    { [classes.iconDefault]: listType === 'grid' },
-                                )}
-                            >
-                                list
-                            </Icon>
-                        </IconButton>
-                        <IconButton className={classes.button} onClick={() => this.setListType('grid')}>
-                            <Icon className={classNames(
-                                { [classes.iconSelected]: listType === 'grid' },
-                                { [classes.iconDefault]: listType === 'list' },
-                            )}
-                            >grid_on
-                            </Icon>
-                        </IconButton>
-                    </div>
-                </div>
-                <div className={classes.listContentWrapper}>
-                    {listType === 'grid' && (
-                        <ApiContext.Provider value={{ apiType }}>
-                            <ApiTableView gridView query={search} />
-                        </ApiContext.Provider>
-                    )}
-                    {listType === 'list' && (
-                        <ApiContext.Provider value={{ apiType }}>
-                            <ApiTableView gridView={false} query={search} />
-                        </ApiContext.Provider>
-                    )}
-                </div>
-            </main>
+                </main>
+            </React.Fragment>
         );
     }
 }

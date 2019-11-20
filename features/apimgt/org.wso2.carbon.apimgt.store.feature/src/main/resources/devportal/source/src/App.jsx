@@ -20,13 +20,14 @@ import React from 'react';
 import { Route, Switch } from 'react-router-dom';
 import Loadable from 'react-loadable';
 import Configurations from 'Config';
+import Settings from 'Settings';
 import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
 import Login from './app/components/Login/Login';
 import Logout from './app/components/Logout';
 import SignUp from './app/components/AnonymousView/SignUp';
 import Progress from './app/components/Shared/Progress';
 import { SettingsProvider } from './app/components/Shared/SettingsContext';
-import AuthManager from './app/data/AuthManager';
+import API from './app/data/api';
 import BrowserRouter from './app/components/Base/CustomRouter/BrowserRouter';
 
 const LoadableProtectedApp = Loadable({
@@ -66,14 +67,17 @@ class Store extends React.Component {
      *  Mounting the components
      */
     componentDidMount() {
-        AuthManager.setSettings().then((response) => {
-            this.setState({ settings: response });
-        }).catch((error) => {
-            console.error(
-                'Error while receiving settings : ',
-                error,
-            );
-        });
+        const api = new API();
+        const promisedSettings = api.getSettings();
+        promisedSettings
+            .then((response) => {
+                this.setState({ settings: response.body });
+            }).catch((error) => {
+                console.error(
+                    'Error while receiving settings : ',
+                    error,
+                );
+            });
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('tenant') === null || urlParams.get('tenant') === 'carbon.super') {
             this.setState({ theme: Configurations.themes.light });
@@ -102,7 +106,7 @@ class Store extends React.Component {
      * @param {string} tenant tenant name
      */
     SetTenantTheme(tenant) {
-        fetch(`${Configurations.app.context}/site/public/tenant_themes/${tenant}/defaultTheme.json`)
+        fetch(`${Settings.app.context}/site/public/tenant_themes/${tenant}/defaultTheme.json`)
             .then(resp => resp.json())
             .then((data) => {
                 this.setState({ theme: data.themes.light });
@@ -119,7 +123,7 @@ class Store extends React.Component {
      */
     render() {
         const { settings, tenantDomain, theme } = this.state;
-        const { app: { context } } = Configurations;
+        const { app: { context } } = Settings;
         return (
             settings && theme && (
                 <SettingsProvider value={{ settings, tenantDomain, setTenantDomain: this.setTenantDomain }}>

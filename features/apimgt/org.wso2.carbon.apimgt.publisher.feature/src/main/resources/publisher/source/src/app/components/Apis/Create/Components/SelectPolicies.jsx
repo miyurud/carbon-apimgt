@@ -8,9 +8,8 @@ import CircularProgress from '@material-ui/core/CircularProgress';
 import { FormattedMessage } from 'react-intl';
 import API from 'AppData/api';
 import { makeStyles } from '@material-ui/core/styles';
-import ClickAwayListener from '@material-ui/core/ClickAwayListener';
 
-const useStyles = makeStyles(theme => ({
+const useStyles = makeStyles((theme) => ({
     mandatoryStar: {
         color: theme.palette.error.main,
         marginLeft: theme.spacing(0.1),
@@ -30,56 +29,55 @@ export default function SelectPolicies(props) {
     const [policies, setPolicies] = useState({});
     const classes = useStyles();
     useEffect(() => {
-        API.policies('subscription').then(response => setPolicies(response.body));
+        API.policies('subscription').then((response) => setPolicies(response.body));
     }, []);
-    const onClickAway = ({ target: { value } }) => {
+    const handleValidateAndChange = ({ target: { value, name } }) => {
         validate('policies', value);
+        onChange({ target: { name, value } });
     };
     if (!policies.list) {
         return <CircularProgress />;
     } else {
         return (
-            <ClickAwayListener onClickAway={onClickAway}>
-                <TextField
-                    fullWidth
-                    select
-                    label={
-                        <React.Fragment>
-                            <FormattedMessage
-                                id='Apis.Create.Components.SelectPolicies.busimess.plans'
-                                defaultMessage='Business plan(s)'
-                            />
-                            {isAPIProduct && (<sup className={classes.mandatoryStar}>*</sup>)}
-                        </React.Fragment>
-                    }
-                    value={selectedPolicies}
-                    name='policies'
-                    onChange={onChange}
-                    SelectProps={{
-                        multiple,
-                        renderValue: selected => (Array.isArray(selected) ? selected.join(', ') : selected),
-                    }}
-                    helperText={isAPIProduct ? helperText + 'API Product' : helperText + 'API'}
-                    margin='normal'
-                    variant='outlined'
-                    InputProps={{
-                        id: 'itest-id-apipolicies-input',
-                    }}
-                >
-                    {policies.list.map(policy => (
-                        <MenuItem
-                            dense
-                            disableGutters={multiple}
-                            id={policy.name}
-                            key={policy.name}
-                            value={policy.displayName}
-                        >
-                            {multiple && <Checkbox color='primary' checked={selectedPolicies.includes(policy.name)} />}
-                            <ListItemText primary={policy.displayName} secondary={policy.description} />
-                        </MenuItem>
-                    ))}
-                </TextField>
-            </ClickAwayListener>
+            <TextField
+                fullWidth
+                select
+                label={(
+                    <>
+                        <FormattedMessage
+                            id='Apis.Create.Components.SelectPolicies.business.plans'
+                            defaultMessage='Business plan(s)'
+                        />
+                        {isAPIProduct && (<sup className={classes.mandatoryStar}>*</sup>)}
+                    </>
+                )}
+                value={selectedPolicies}
+                name='policies'
+                onChange={handleValidateAndChange}
+                SelectProps={{
+                    multiple,
+                    renderValue: (selected) => (Array.isArray(selected) ? selected.join(', ') : selected),
+                }}
+                helperText={isAPIProduct ? helperText + 'API Product' : helperText + 'API'}
+                margin='normal'
+                variant='outlined'
+                InputProps={{
+                    id: 'itest-id-apipolicies-input',
+                }}
+            >
+                {policies.list.map((policy) => (
+                    <MenuItem
+                        dense
+                        disableGutters={multiple}
+                        id={policy.name}
+                        key={policy.name}
+                        value={policy.displayName}
+                    >
+                        {multiple && <Checkbox color='primary' checked={selectedPolicies.includes(policy.name)} />}
+                        <ListItemText primary={policy.displayName} secondary={policy.description} />
+                    </MenuItem>
+                ))}
+            </TextField>
         );
     }
 }

@@ -18,6 +18,7 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import { withStyles } from '@material-ui/core/styles';
+import { Link } from 'react-router-dom';
 import Card from '@material-ui/core/Card';
 import CardActions from '@material-ui/core/CardActions';
 import CardContent from '@material-ui/core/CardContent';
@@ -33,17 +34,17 @@ import DeleteApiButton from 'AppComponents/Apis/Details/components/DeleteApiButt
 
 import ThumbnailView from './ThumbnailView';
 
-const styles = theme => ({
+const styles = (theme) => ({
     card: {
-        margin: theme.spacing.unit * (3 / 2),
-        maxWidth: theme.spacing.unit * 32,
+        margin: theme.spacing(3 / 2),
+        maxWidth: theme.spacing(32),
         transition: 'box-shadow 0.3s ease-in-out',
     },
     providerText: {
         textTransform: 'capitalize',
     },
-    apiDetails: { padding: theme.spacing.unit },
-    apiActions: { justifyContent: 'space-between', padding: `0px 0px ${theme.spacing.unit}px 8px` },
+    apiDetails: { padding: theme.spacing(1) },
+    apiActions: { justifyContent: 'space-between', padding: `0px 0px ${theme.spacing(1)}px 8px` },
     deleteProgress: {
         color: green[200],
         position: 'absolute',
@@ -52,6 +53,7 @@ const styles = theme => ({
     thumbHeader: {
         width: '90%',
         whiteSpace: 'nowrap',
+        color: theme.palette.text.secondary,
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         cursor: 'pointer',
@@ -61,15 +63,15 @@ const styles = theme => ({
     imageWrapper: {
         color: theme.palette.text.secondary,
         backgroundColor: theme.palette.background.paper,
-        width: theme.custom.thumbnail.width + theme.spacing.unit,
+        width: theme.custom.thumbnail.width + theme.spacing(1),
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
     },
     thumbContent: {
-        width: theme.custom.thumbnail.width - theme.spacing.unit,
+        width: theme.custom.thumbnail.width - theme.spacing(1),
         backgroundColor: theme.palette.background.paper,
-        padding: theme.spacing.unit,
+        padding: theme.spacing(1),
     },
     thumbLeft: {
         alignSelf: 'flex-start',
@@ -113,6 +115,9 @@ const styles = theme => ({
     thumbBy: {
         'padding-left': '5px',
     },
+    thumbRightBy: {
+        'margin-right': '5px',
+    },
 });
 
 /**
@@ -142,47 +147,51 @@ class APIThumb extends Component {
      * @memberof Listing
      */
     handleApiDelete() {
-        const { id, name } = this.props.api;
+        const { api: { id, name } } = this.props;
         this.setState({ loading: true });
         const { updateData, isAPIProduct } = this.props;
         if (isAPIProduct) {
             const promisedDelete = API.deleteProduct(id);
-            promisedDelete.then((response) => {
-                if (response.status !== 200) {
-                    Alert.info('Something went wrong while deleting the API Product!');
-                    return;
-                }
-                updateData(id);
-                Alert.info(`API Product ${name} deleted Successfully`);
-                this.setState({ loading: false });
-            }).catch((error) => {
-                if (error.status === 409) {
-                    Alert.error(error.response.body.description);
+            promisedDelete
+                .then((response) => {
+                    if (response.status !== 200) {
+                        Alert.info('Something went wrong while deleting the API Product!');
+                        return;
+                    }
+                    updateData(id);
+                    Alert.info(`API Product ${name} deleted Successfully`);
                     this.setState({ loading: false });
-                } else {
-                    Alert.error('Something went wrong while deleting the API Product!');
-                    this.setState({ loading: false });
-                }
-            });
+                })
+                .catch((error) => {
+                    if (error.status === 409) {
+                        Alert.error(error.response.body.description);
+                        this.setState({ loading: false });
+                    } else {
+                        Alert.error('Something went wrong while deleting the API Product!');
+                        this.setState({ loading: false });
+                    }
+                });
         } else {
             const promisedDelete = API.delete(id);
-            promisedDelete.then((response) => {
-                if (response.status !== 200) {
-                    Alert.info('Something went wrong while deleting the API!');
-                    return;
-                }
-                updateData(id);
-                Alert.info(`API ${name} deleted Successfully`);
-                this.setState({ loading: false });
-            }).catch((error) => {
-                if (error.status === 409) {
-                    Alert.error(error.response.body.description);
+            promisedDelete
+                .then((response) => {
+                    if (response.status !== 200) {
+                        Alert.info('Something went wrong while deleting the API!');
+                        return;
+                    }
+                    updateData(id);
+                    Alert.info(`API ${name} deleted Successfully`);
                     this.setState({ loading: false });
-                } else {
-                    Alert.error('Something went wrong while deleting the API!');
-                    this.setState({ loading: false });
-                }
-            });
+                })
+                .catch((error) => {
+                    if (error.status === 409) {
+                        Alert.error(error.response.body.description);
+                        this.setState({ loading: false });
+                    } else {
+                        Alert.error('Something went wrong while deleting the API!');
+                        this.setState({ loading: false });
+                    }
+                });
         }
     }
 
@@ -195,6 +204,7 @@ class APIThumb extends Component {
     toggleMouseOver(event) {
         this.setState({ isHover: event.type === 'mouseover' });
     }
+
     /**
      * @inheritdoc
      * @returns {React.Component} @inheritdoc
@@ -203,7 +213,12 @@ class APIThumb extends Component {
     render() {
         const { classes, api, isAPIProduct } = this.props;
         const { isHover, loading } = this.state;
-
+        let overviewPath = '';
+        if (api.apiType) {
+            overviewPath = isAPIProduct ? `/api-products/${api.id}/overview` : `/apis/${api.id}/overview`;
+        } else {
+            overviewPath = `/apis/${api.apiUUID}/documents/${api.id}/details`;
+        }
         if (isAPIProduct) {
             api.apiType = API.CONSTS.APIProduct;
         } else {
@@ -226,13 +241,11 @@ class APIThumb extends Component {
                 <CardMedia src='None' component={ThumbnailView} height={140} title='Thumbnail' api={api} />
                 <CardContent className={classes.apiDetails}>
                     <div className={classes.textWrapper}>
-                        <Typography
-                            gutterBottom
-                            variant='h4'
-                            className={classes.thumbHeader}
-                        >
-                            {api.name}
-                        </Typography>
+                        <Link to={overviewPath}>
+                            <Typography gutterBottom variant='h4' className={classes.thumbHeader} title={api.name}>
+                                {api.name}
+                            </Typography>
+                        </Link>
                     </div>
                     <div className={classes.row}>
                         <Typography variant='caption' gutterBottom align='left' className={classes.thumbBy}>
@@ -250,14 +263,10 @@ class APIThumb extends Component {
 
                                 <div className={classes.thumbLeft}>
                                     <Typography variant='caption' gutterBottom align='left'>
-                                        <FormattedMessage
-                                            defaultMessage='Version'
-                                            id='Apis.Listing.ApiThumb.version'
-                                        />
+                                        <FormattedMessage defaultMessage='Version' id='Apis.Listing.ApiThumb.version' />
                                     </Typography>
                                 </div>
                             </div>
-
                         )}
                         <div className={classes.row}>
                             <div className={classes.thumbRight}>
@@ -276,11 +285,16 @@ class APIThumb extends Component {
                 </CardContent>
                 <CardActions className={classes.apiActions}>
                     <Chip
-                        label={(api.apiType === API.CONSTS.APIProduct) ? api.state : api.lifeCycleStatus}
+                        label={api.apiType === API.CONSTS.APIProduct ? api.state : api.lifeCycleStatus}
                         color='default'
                     />
                     {(api.type === 'GRAPHQL' || api.transportType === 'GRAPHQL') && (
-                        <Chip label={api.transportType === undefined ? api.type : api.transportType} color='primary' />
+                        <Chip
+                            className={classes.thumbRightBy}
+                            label={api.transportType === undefined
+                                ? api.type : api.transportType}
+                            color='primary'
+                        />
                     )}
                     <DeleteApiButton onClick={this.handleApiDelete} api={api} />
                     {loading && <CircularProgress className={classes.deleteProgress} />}

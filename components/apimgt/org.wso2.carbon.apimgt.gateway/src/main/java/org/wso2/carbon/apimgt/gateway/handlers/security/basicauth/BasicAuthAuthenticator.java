@@ -50,6 +50,7 @@ public class BasicAuthAuthenticator implements Authenticator {
 
     private static final Log log = LogFactory.getLog(BasicAuthAuthenticator.class);
     private final String basicAuthKeyHeaderSegment = "Basic";
+    static final String PUBLISHER_TENANT_DOMAIN = "tenant.info.domain";
 
     private String securityHeader;
     private String requestOrigin;
@@ -129,11 +130,6 @@ public class BasicAuthAuthenticator implements Authenticator {
         String authenticationScheme;
 
         List<VerbInfoDTO> verbInfoList;
-        //set default condition group
-        ConditionGroupDTO[] conditionGroups = new ConditionGroupDTO[1];
-        ConditionGroupDTO defaultGroup = new ConditionGroupDTO();
-        defaultGroup.setConditionGroupId(APIConstants.THROTTLE_POLICY_DEFAULT);
-        conditionGroups[0] = defaultGroup;
 
         if (APIConstants.GRAPHQL_API.equals(synCtx.getProperty(APIConstants.API_TYPE))) {
             HashMap<String, Boolean> operationAuthSchemeMappingList =
@@ -155,7 +151,6 @@ public class BasicAuthAuthenticator implements Authenticator {
                 }
                 verbInfoDTO.setThrottling(operationThrottlingMappingList.get(operation));
                 verbInfoDTO.setRequestKey(apiContext + "/" + apiVersion + operation + ":" + httpMethod);
-                verbInfoDTO.setConditionGroups(conditionGroups);
                 verbInfoList.add(verbInfoDTO);
             }
         } else {
@@ -165,7 +160,6 @@ public class BasicAuthAuthenticator implements Authenticator {
             verbInfoDTO.setAuthType(authenticationScheme);
             verbInfoDTO.setThrottling(OpenAPIUtils.getResourceThrottlingTier(openAPI, synCtx));
             verbInfoDTO.setRequestKey(apiContext + "/" + apiVersion + matchingResource + ":" + httpMethod);
-            verbInfoDTO.setConditionGroups(conditionGroups);
             verbInfoList.add(verbInfoDTO);
         }
 
@@ -229,6 +223,14 @@ public class BasicAuthAuthenticator implements Authenticator {
         }
         String username = getEndUserName(credentials[0]);
         String password = credentials[1];
+
+        // If end user tenant domain does not match the API publisher's tenant domain, return error
+        if (!MultitenantUtils.getTenantDomain(username).equals(synCtx.getProperty(PUBLISHER_TENANT_DOMAIN))) {
+            log.error("Basic Authentication failure: tenant domain mismatch for user :" + username);
+            return new AuthenticationResponse(false, isMandatory, true,
+                    APISecurityConstants.API_AUTH_FORBIDDEN,
+                    APISecurityConstants.API_AUTH_FORBIDDEN_MESSAGE);
+        }
 
         boolean authenticated = false;
         try {

@@ -18,12 +18,12 @@
 
 package org.wso2.carbon.apimgt.impl;
 
+import javax.xml.namespace.QName;
 import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import javax.xml.namespace.QName;
 
 /**
  * This class represents the constants that are used for APIManager implementation
@@ -210,6 +210,34 @@ public final class APIConstants {
 
     public static final String WORKFLOW_MEDIA_TYPE = "workflow-config";
 
+    // Constants used in API Security Audit feature
+    // For configs
+    public static final String API_SECURITY_AUDIT = "APISecurityAudit.";
+    public static final String API_SECURITY_AUDIT_API_TOKEN = API_SECURITY_AUDIT + "APIToken";
+    public static final String API_SECURITY_AUDIT_CID = API_SECURITY_AUDIT + "CollectionID";
+    public static final String API_SECURITY_AUDIT_GLOBAL = API_SECURITY_AUDIT + "Global";
+
+    public static final String SECURITY_AUDIT_CONFIGURATION = "SecurityAuditConfig";
+    public static final String SECURITY_AUDIT_API_TOKEN = "apiToken";
+    public static final String SECURITY_AUDIT_COLLECTION_ID = "collectionId";
+    public static final String SECURITY_AUDIT_OVERRIDE_GLOBAL = "overrideGlobal";
+    // For HTTP requests
+    public static final String HEADER_ACCEPT = "Accept";
+    public static final String HEADER_CONTENT_TYPE = "Content-Type";
+    public static final String HEADER_API_TOKEN = "X-API-KEY";
+    public static final String MULTIPART_FORM_BOUNDARY = "X-WSO2-BOUNDARY";
+    public static final String MULTIPART_LINE_FEED = "\r\n";
+    public static final String BASE_AUDIT_URL = "https://platform.42crunch.com/api/v1/apis";
+    public static final String MULTIPART_CONTENT_TYPE = "multipart/form-data; boundary=";
+    public static final String DATA = "data";
+    public static final String ATTR = "attr";
+    public static final String GRADE = "grade";
+    public static final String NUM_ERRORS = "numErrors";
+    public static final String DESC = "desc";
+    public static final String ID = "id";
+    public static final String IS_VALID = "isValid";
+    public static final String ASSESSMENT_REPORT = "/assessmentreport?";
+
     //registry resource containing the self signup user config
     public static final String SELF_SIGN_UP_CONFIG_LOCATION = API_APPLICATION_DATA_LOCATION + "/sign-up-config.xml";
     public static final String SELF_SIGN_UP_CONFIG_MEDIA_TYPE = "signup-config";
@@ -353,6 +381,8 @@ public final class APIConstants {
     public static final String IDENTITY_OAUTH2_FIELD_VALIDITY_PERIOD = "VALIDITY_PERIOD";
     public static final String IDENTITY_OAUTH2_FIELD_USER_DOMAIN = "USER_DOMAIN";
     public static final String DOT = ".";
+    public static final String DEFAULT = "DEFAULT";
+    public static final String API_KEY_AUTH_TYPE = "API_KEY";
     public static final String EXP = "exp";
     public static final String JWT = "JWT";
     public static final String JWT_DEFAULT_AUDIENCE = "http://org.wso2.apimgt/gateway";
@@ -1155,6 +1185,7 @@ public final class APIConstants {
     public static final String SWAGGER_X_MEDIATION_SCRIPT = "x-mediation-script";
     public static final String SWAGGER_X_WSO2_SECURITY = "x-wso2-security";
     public static final String SWAGGER_X_WSO2_SCOPES = "x-wso2-scopes";
+    public static final String SWAGGER_X_EXAMPLES = "x-examples";
     public static final String SWAGGER_SCOPE_KEY = "key";
     public static final String SWAGGER_NAME = "name";
     public static final String SWAGGER_SCHEMES = "schemes";
@@ -1295,8 +1326,8 @@ public final class APIConstants {
     }
 
     public static final String API_LC_ACTION_DEPRECATE = "Deprecate";
-    public static final String DEPRECATE_CHECK_LIST_ITEM = "Deprecate old versions after publish the API";
-    public static final String RESUBSCRIBE_CHECK_LIST_ITEM = "Requires re-subscription when publish the API";
+    public static final String DEPRECATE_CHECK_LIST_ITEM = "Deprecate old versions after publishing the API";
+    public static final String RESUBSCRIBE_CHECK_LIST_ITEM = "Requires re-subscription when publishing the API";
 
     public static final String METRICS_PREFIX = "org.wso2.am";
 
@@ -1544,6 +1575,7 @@ public final class APIConstants {
     public static class JwtTokenConstants {
         public static final String APPLICATION = "application";
         public static final String APPLICATION_ID = "id";
+        public static final String APPLICATION_UUID = "uuid";
         public static final String APPLICATION_NAME = "name";
         public static final String APPLICATION_TIER = "tier";
         public static final String APPLICATION_OWNER = "owner";
@@ -1593,6 +1625,7 @@ public final class APIConstants {
     public static final String JSON_USERNAME = "username";
     public static final String REGEX_ILLEGAL_CHARACTERS_FOR_API_METADATA = "[~!@#;%^*()+={}|<>\"\',\\[\\]&/$\\\\]";
     public static final String JSON_CLIENT_ID = "client_id";
+    public static final String JSON_ADDITIONAL_PROPERTIES = "additionalProperties";
     public static final String JSON_CLIENT_SECRET = "client_secret";
 
     /**
@@ -1786,4 +1819,16 @@ public final class APIConstants {
     public static final int MAX_LENGTH_VERSION = 30;
     public static final int MAX_LENGTH_PROVIDER = 50;
     public static final int MAX_LENGTH_CONTEXT = 82; //context becomes context + version + two '/'. so max context is 50
+
+    /**
+     * Constants for trust store access
+     *
+     * */
+    public static final String TRUST_STORE_PASSWORD = "Security.TrustStore.Password";
+    public static final String TRUST_STORE_LOCATION = "Security.TrustStore.Location";
+    public static final String UTILITY_WEB_APP_EP = "/throttle/data/v1";
+    public static final String API_KEY_REVOKE_PATH = "/apikey/revoke";
+
+    public static final String SKIP_ROLES_BY_REGEX = "skipRolesByRegex";
+
 }

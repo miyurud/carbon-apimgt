@@ -26,21 +26,19 @@ import FormControl from '@material-ui/core/FormControl';
 import FormGroup from '@material-ui/core/FormGroup';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import Paper from '@material-ui/core/Paper';
-import Alert from 'AppComponents/Shared/Alert';
-import Progress from 'AppComponents/Shared/Progress';
 import API from 'AppData/api';
 import { isRestricted } from 'AppData/AuthManager';
 
-const styles = theme => ({
+const styles = (theme) => ({
     subscriptionPoliciesPaper: {
-        marginTop: theme.spacing.unit * 2,
+        marginTop: theme.spacing(2),
         padding: theme.spacing(2),
     },
     grid: {
-        margin: theme.spacing.unit * 1.25,
+        margin: theme.spacing(1.25),
     },
     gridLabel: {
-        marginTop: theme.spacing.unit * 1.5,
+        marginTop: theme.spacing(1.5),
     },
     mainTitle: {
         paddingLeft: 0,
@@ -55,7 +53,6 @@ class SubscriptionPoliciesManage extends Component {
         super(props);
         this.state = {
             subscriptionPolicies: {},
-            updateInProgress: false,
         };
         this.handleChange = this.handleChange.bind(this);
     }
@@ -78,46 +75,23 @@ class SubscriptionPoliciesManage extends Component {
      * @param event onChange event
      */
     handleChange(event) {
-        this.setState({ updateInProgress: true });
         const { name, checked } = event.target;
-        const { intl, api, updateAPI } = this.props;
-        let updatedSelectedPolicies = [...api.policies];
-
+        const { setPolices, policies } = this.props;
+        let newSelectedPolicies = [...policies];
         if (checked) {
-            updatedSelectedPolicies.push(name);
+            newSelectedPolicies.push(name);
         } else {
-            updatedSelectedPolicies = updatedSelectedPolicies.filter(policy => policy !== name);
+            newSelectedPolicies = policies.filter((policy) => policy !== name);
         }
-
-        if (updateAPI) {
-            updateAPI({ policies: updatedSelectedPolicies })
-                .then(() => {
-                    Alert.info(intl.formatMessage({
-                        id: 'Apis.Details.Subscriptions.SubscriptionPoliciesManage.policy.update.success',
-                        defaultMessage: 'API subscription policies updated successfully',
-                    }));
-                })
-                .catch((error) => {
-                    if (process.env.NODE_ENV !== 'production') {
-                        console.error(error);
-                    }
-                    Alert.error(intl.formatMessage({
-                        id: 'Apis.Details.Subscriptions.SubscriptionPoliciesManage.policy.update.error',
-                        defaultMessage: 'Error occurred while updating subscription policies',
-                    }));
-                })
-                .finally(() => {
-                    this.setState({ updateInProgress: false });
-                });
-        }
+        setPolices(newSelectedPolicies);
     }
 
     render() {
-        const { classes, api } = this.props;
-        const { subscriptionPolicies, updateInProgress } = this.state;
+        const { classes, api, policies } = this.props;
+        const { subscriptionPolicies } = this.state;
 
         return (
-            <React.Fragment>
+            <>
                 <Typography variant='h4'>
                     <FormattedMessage
                         id='Apis.Details.Subscriptions.SubscriptionPoliciesManage.business.plans'
@@ -130,27 +104,28 @@ class SubscriptionPoliciesManage extends Component {
                         defaultMessage='Attach business plans to API'
                     />
                 </Typography>
-                { updateInProgress && <Progress /> }
                 <Paper className={classes.subscriptionPoliciesPaper}>
                     <FormControl className={classes.formControl}>
                         <FormGroup>
-                            { subscriptionPolicies && Object.entries(subscriptionPolicies).map(value => (
+                            { subscriptionPolicies && Object.entries(subscriptionPolicies).map((value) => (
                                 <FormControlLabel
                                     key={value[1].name}
-                                    control={<Checkbox
-                                        disabled={isRestricted(['apim:api_publish', 'apim:api_create'], api)}
-                                        color='primary'
-                                        checked={api.policies.includes(value[1].name)}
-                                        onChange={e => this.handleChange(e)}
-                                        name={value[1].name}
-                                    />}
+                                    control={(
+                                        <Checkbox
+                                            disabled={isRestricted(['apim:api_publish', 'apim:api_create'], api)}
+                                            color='primary'
+                                            checked={policies.includes(value[1].name)}
+                                            onChange={(e) => this.handleChange(e)}
+                                            name={value[1].name}
+                                        />
+                                    )}
                                     label={value[1].name + ' : ' + value[1].description}
                                 />
                             ))}
                         </FormGroup>
                     </FormControl>
                 </Paper>
-            </React.Fragment>
+            </>
         );
     }
 }
@@ -159,7 +134,8 @@ SubscriptionPoliciesManage.propTypes = {
     classes: PropTypes.shape({}).isRequired,
     intl: PropTypes.shape({ formatMessage: PropTypes.func }).isRequired,
     api: PropTypes.shape({ policies: PropTypes.array }).isRequired,
-    updateAPI: PropTypes.func.isRequired,
+    setPolices: PropTypes.func.isRequired,
+    policies: PropTypes.shape({}).isRequired,
 };
 
 export default injectIntl(withStyles(styles)(SubscriptionPoliciesManage));

@@ -36,9 +36,12 @@ import org.json.JSONTokener;
 import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.APIProvider;
 import org.wso2.carbon.apimgt.api.dto.CertificateMetadataDTO;
+import org.wso2.carbon.apimgt.api.dto.ClientCertificateDTO;
 import org.wso2.carbon.apimgt.api.model.API;
 import org.wso2.carbon.apimgt.api.model.APIIdentifier;
 import org.wso2.carbon.apimgt.api.model.Documentation;
+import org.wso2.carbon.apimgt.api.model.Scope;
+import org.wso2.carbon.apimgt.api.model.URITemplate;
 import org.wso2.carbon.apimgt.impl.APIConstants;
 import org.wso2.carbon.apimgt.impl.certificatemgt.CertificateManager;
 import org.wso2.carbon.apimgt.impl.certificatemgt.CertificateManagerImpl;
@@ -141,6 +144,14 @@ public class APIExportUtil {
 
             //export meta information
             exportMetaInformation(archivePath, apiToReturn, registry, exportFormat, provider);
+            
+            //export mTLS authentication related certificates
+            if(provider.isClientCertificateBasedAuthenticationConfigured()) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Mutual SSL enabled. Exporting client certificates.");
+                }
+                exportClientCertificates(archivePath, apiToReturn, tenantId, provider, exportFormat);
+            }
         } catch (APIManagementException e) {
             String errorMessage = "Unable to retrieve API Documentation for API: " + apiIDToReturn.getApiName()
                     + StringUtils.SPACE + APIConstants.API_DATA_VERSION + " : " + apiIDToReturn.getVersion();
@@ -544,6 +555,18 @@ public class APIExportUtil {
                     String schemaContent = apiProvider.getGraphqlSchema(apiToReturn.getId());
                     CommonUtil.writeFile(archivePath + APIImportExportConstants.GRAPHQL_SCHEMA_DEFINITION_LOCATION,
                             schemaContent);
+                    //Set the id of the scopes in API object to 0, as scope creation fails with a non existing id
+                    Set<URITemplate> uriTemplates = apiToReturn.getUriTemplates();
+                    for (URITemplate uriTemplate : uriTemplates) {
+                        if (uriTemplate.getScope() != null) {
+                            uriTemplate.getScope().setId(0);
+                        }
+                    }
+                    if (apiToReturn.getScopes() != null) {
+                        for (Scope scope : apiToReturn.getScopes()) {
+                            scope.setId(0);
+                        }
+                    }
                 } else {
                     //Swagger.json contains complete details about scopes. Therefore scope details and uri templates
                     //are removed from api.json.
@@ -673,8 +696,54 @@ public class APIExportUtil {
             throw new APIImportExportException(errorMessage, e);
         }
     }
+    
+    /**
+     * Export Mutual SSL related certificates
+     * 
+     * @param api          API to be exported
+     * @param tenantId     tenant id of the user
+     * @param apiProvider  api Provider
+     * @param exportFormat Export format of file
+     * @throws APIImportExportException
+     */
 
-     /**
+    private static void exportClientCertificates(String archivePath, API api, int tenantId, APIProvider provider,
+            ExportFormat exportFormat) throws APIImportExportException {
+
+        List<ClientCertificateDTO> certificateMetadataDTOS;
+        try {
+            certificateMetadataDTOS = provider.searchClientCertificates(tenantId, null, api.getId());
+            if (!certificateMetadataDTOS.isEmpty()) {
+                CommonUtil.createDirectory(archivePath + File.separator + APIImportExportConstants.META_INFO_DIRECTORY);
+
+                Gson gson = new GsonBuilder().setPrettyPrinting().create();
+                String element = gson.toJson(certificateMetadataDTOS,
+                        new TypeToken<ArrayList<ClientCertificateDTO>>() {
+                        }.getType());
+
+                switch (exportFormat) {
+                    case YAML:
+                        String yaml = CommonUtil.jsonToYaml(element);
+                        CommonUtil.writeFile(archivePath + APIImportExportConstants.YAML_CLIENT_CERTIFICATE_FILE,
+                                yaml);
+                        break;
+                    case JSON:
+                        CommonUtil.writeFile(archivePath + APIImportExportConstants.JSON_CLIENT_CERTIFICATE_FILE,
+                                element);
+                }
+            }
+        } catch (IOException e) {
+            String errorMessage = "Error while retrieving saving as YAML";
+            log.error(errorMessage, e);
+            throw new APIImportExportException(errorMessage, e);
+        } catch (APIManagementException e) {
+            String errorMsg = "Error retrieving certificate meta data. tenantId [" + tenantId + "] api ["
+                    + tenantId + "]";
+            throw new APIImportExportException(errorMsg, e);
+        }
+    }
+
+    /**
      * Get endpoint url list from endpoint config.
      *
      * @param endpointConfig JSON converted endpoint config

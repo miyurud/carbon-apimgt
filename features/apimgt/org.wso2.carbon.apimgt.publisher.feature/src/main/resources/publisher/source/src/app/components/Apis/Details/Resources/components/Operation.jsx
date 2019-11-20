@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import React, { Fragment, useState } from 'react';
+import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import ExpansionPanel from '@material-ui/core/ExpansionPanel';
 import Grid from '@material-ui/core/Grid';
@@ -33,12 +33,13 @@ import Utils from 'AppData/Utils';
 import DeleteIcon from '@material-ui/icons/Delete';
 import IconButton from '@material-ui/core/IconButton';
 import Badge from '@material-ui/core/Badge';
-// splitted operation components
+import ReportProblemOutlinedIcon from '@material-ui/icons/ReportProblemOutlined';
+// spliced operation components
 
-import { isRestricted } from 'AppData/AuthManager';
 import DescriptionAndSummary from './operationComponents/DescriptionAndSummary';
 import OperationGovernance from './operationComponents/OperationGovernance';
 import Parameters from './operationComponents/Parameters';
+import SOAPToRESTListing from './operationComponents/SOAPToREST/SOAPToRESTListing';
 
 /**
  *
@@ -60,6 +61,8 @@ function Operation(props) {
         markAsDelete,
         hideParameters,
         spec,
+        resourcePolicy,
+        resourcePoliciesDispatcher,
         target,
         verb,
     } = props;
@@ -95,6 +98,10 @@ function Operation(props) {
             },
         };
     });
+    const apiOperation = api.operations[target] && api.operations[target][verb.toUpperCase()];
+    const isUsedInAPIProduct = apiOperation && Array.isArray(
+        apiOperation.usedProductIds,
+    ) && apiOperation.usedProductIds.length;
 
     /**
      *
@@ -119,12 +126,12 @@ function Operation(props) {
     }
     const classes = useStyles();
     return (
-        <Fragment>
+        <>
             {markAsDelete && (
                 <Box className={classes.overlayUnmarkDelete}>
                     <Tooltip title='Marked for delete' aria-label='Marked for delete'>
                         <Button onClick={toggleDelete} variant='outlined' style={{ marginTop: '10px' }}>
-                            Undo
+                            Undo Delete
                         </Button>
                     </Tooltip>
                 </Box>
@@ -145,7 +152,7 @@ function Operation(props) {
                     classes={{ content: classes.contentNoMargin }}
                 >
                     <Grid container direction='row' justify='space-between' alignItems='center' spacing={0}>
-                        <Grid item md={10}>
+                        <Grid item md={6}>
                             <Badge invisible={!operation['x-wso2-new']} color='error' variant='dot'>
                                 <Button
                                     disableFocusRipple
@@ -169,11 +176,40 @@ function Operation(props) {
                                 </Typography>
                             </Typography>
                         </Grid>
+                        {Boolean(isUsedInAPIProduct) && (
+                            <Grid item md={4}>
+                                <Box display='flex'>
+                                    <ReportProblemOutlinedIcon fontSize='small' />
+                                    <Box display='flex' ml={1} mt={1 / 4} fontSize='caption.fontSize'>
+                                        This operation is used in
+                                        {' '}
+                                        {isUsedInAPIProduct}
+                                        {' '}
+API product(s)
+                                    </Box>
+                                </Box>
+                            </Grid>
+                        )}
                         {!(disableDelete || markAsDelete) && (
                             <Grid item md={1}>
-                                <IconButton onClick={toggleDelete} aria-label='delete'>
-                                    <DeleteIcon fontSize='small' />
-                                </IconButton>
+                                <Tooltip
+                                    title={
+                                        isUsedInAPIProduct
+                                            ? "Can't delete operation when used in an API product"
+                                            : 'Delete'
+                                    }
+                                    aria-label='Delete operation'
+                                >
+                                    <div>
+                                        <IconButton
+                                            disabled={Boolean(isUsedInAPIProduct) || disableUpdate}
+                                            onClick={toggleDelete}
+                                            aria-label='delete'
+                                        >
+                                            <DeleteIcon fontSize='small' />
+                                        </IconButton>
+                                    </div>
+                                </Tooltip>
                             </Grid>
                         )}
                     </Grid>
@@ -184,7 +220,7 @@ function Operation(props) {
                         <DescriptionAndSummary
                             operation={operation}
                             operationsDispatcher={operationsDispatcher}
-                            disableUpdate={isRestricted(['apim:api_create'], api)}
+                            disableUpdate={disableUpdate}
                             target={target}
                             verb={verb}
                         />
@@ -201,10 +237,24 @@ function Operation(props) {
                         {!hideParameters && (
                             <Parameters
                                 operation={operation}
-                                operationActionsDispatcher={operationsDispatcher}
+                                operationsDispatcher={operationsDispatcher}
                                 operationRateLimits={operationRateLimits}
                                 api={api}
                                 disableUpdate={disableUpdate}
+                                spec={spec}
+                                target={target}
+                                verb={verb}
+                            />
+                        )}
+                        {resourcePolicy && (
+                            <SOAPToRESTListing
+                                operation={operation}
+                                operationsDispatcher={operationsDispatcher}
+                                operationRateLimits={operationRateLimits}
+                                resourcePolicy={resourcePolicy}
+                                resourcePoliciesDispatcher={resourcePoliciesDispatcher}
+                                disableUpdate={disableUpdate}
+                                spec={spec}
                                 target={target}
                                 verb={verb}
                             />
@@ -212,28 +262,33 @@ function Operation(props) {
                     </Grid>
                 </ExpansionPanelDetails>
             </ExpansionPanel>
-        </Fragment>
+        </>
     );
 }
 Operation.defaultProps = {
     highlight: false,
     disableUpdate: false,
-    /* Set following prop to false , After implementing the `Parameter` section */
-    hideParameters: true,
+    hideParameters: false,
     disableDelete: false,
     onMarkAsDelete: () => {},
     markAsDelete: false,
     operationRateLimits: [], // Response body.list from apis policies for `api` throttling policies type
 };
 Operation.propTypes = {
-    api: PropTypes.shape({ scopes: PropTypes.arrayOf(PropTypes.shape({})) }).isRequired,
+    api: PropTypes.shape({ scopes: PropTypes.arrayOf(PropTypes.shape({})), resourcePolicies: PropTypes.shape({}) })
+        .isRequired,
     operationsDispatcher: PropTypes.func.isRequired,
     onMarkAsDelete: PropTypes.func,
+    resourcePoliciesDispatcher: PropTypes.func.isRequired,
     markAsDelete: PropTypes.bool,
     disableDelete: PropTypes.bool,
     disableUpdate: PropTypes.bool,
     hideParameters: PropTypes.bool,
-    operation: PropTypes.shape({}).isRequired,
+    resourcePolicy: PropTypes.shape({}).isRequired,
+    operation: PropTypes.shape({
+        'x-wso2-new': PropTypes.bool,
+        summary: PropTypes.string,
+    }).isRequired,
     target: PropTypes.string.isRequired,
     verb: PropTypes.string.isRequired,
     spec: PropTypes.shape({}).isRequired,

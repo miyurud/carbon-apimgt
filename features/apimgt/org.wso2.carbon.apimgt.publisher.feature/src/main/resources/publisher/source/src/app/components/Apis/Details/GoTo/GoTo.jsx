@@ -36,7 +36,7 @@ import ListItem from '@material-ui/core/ListItem';
 import ListItemText from '@material-ui/core/ListItemText';
 import suggestions from './RouteMappings';
 
-const useStyles = makeStyles(theme => ({
+const useStyles = makeStyles((theme) => ({
     root: {
         flexGrow: 1,
         height: 250,
@@ -71,6 +71,7 @@ const useStyles = makeStyles(theme => ({
         flexDirection: 'column',
         padding: 10,
         cursor: 'pointer',
+        minWidth: 30,
     },
     goToWrapper: {
         position: 'relative',
@@ -132,8 +133,8 @@ function renderSuggestion(suggestionProps) {
     } = suggestionProps;
     const isHighlighted = highlightedIndex === index;
 
-    const route = (isAPIProduct ?
-        (`/api-products/${api.id}/${suggestion.route}`)
+    const route = (isAPIProduct
+        ? (`/api-products/${api.id}/${suggestion.route}`)
         : (`/apis/${api.id}/${suggestion.route}`));
     return (
         <Link
@@ -262,16 +263,15 @@ function GoTo(props) {
                                             {isOpen ? (
                                                 <Paper className={classes.paper} square>
                                                     {getSuggestions(inputValue, isAPIProduct, isGraphQL)
-                                                        .map((suggestion, index) =>
-                                                            renderSuggestion({
-                                                                suggestion,
-                                                                index,
-                                                                itemProps: getItemProps({ item: suggestion.label }),
-                                                                highlightedIndex,
-                                                                selectedItem,
-                                                                handleClickAway: handleClickAway,
-                                                                ...props,
-                                                            }))}
+                                                        .map((suggestion, index) => renderSuggestion({
+                                                            suggestion,
+                                                            index,
+                                                            itemProps: getItemProps({ item: suggestion.label }),
+                                                            highlightedIndex,
+                                                            selectedItem,
+                                                            handleClickAway: handleClickAway,
+                                                            ...props,
+                                                        }))}
                                                 </Paper>
                                             ) : null}
                                         </div>

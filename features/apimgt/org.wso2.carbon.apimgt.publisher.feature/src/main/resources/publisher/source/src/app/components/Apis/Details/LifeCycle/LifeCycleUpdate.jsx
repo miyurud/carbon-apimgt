@@ -30,16 +30,18 @@ import API from 'AppData/api';
 import { CircularProgress } from '@material-ui/core';
 import { ScopeValidation, resourceMethod, resourcePath } from 'AppData/ScopeValidation';
 import Alert from 'AppComponents/Shared/Alert';
+import Banner from 'AppComponents/Shared/Banner';
+
 import LifeCycleImage from './LifeCycleImage';
 import CheckboxLabels from './CheckboxLabels';
 import LifecyclePending from './LifecyclePending';
 
-const styles = theme => ({
+const styles = (theme) => ({
     buttonsWrapper: {
         marginTop: 40,
     },
     stateButton: {
-        marginRight: theme.spacing.unit,
+        marginRight: theme.spacing(),
     },
     paperCenter: {
         padding: theme.spacing(2),
@@ -77,6 +79,7 @@ class LifeCycleUpdate extends Component {
         this.state = {
             newState: null,
             isUpdating: null,
+            pageError: null,
         };
     }
 
@@ -88,7 +91,7 @@ class LifeCycleUpdate extends Component {
     updateLCStateOfAPI(apiUUID, action) {
         this.setState({ isUpdating: action });
         let promisedUpdate;
-        const lifecycleChecklist = this.props.checkList.map(item => item.value + ':' + item.checked);
+        const lifecycleChecklist = this.props.checkList.map((item) => item.value + ':' + item.checked);
         if (lifecycleChecklist.length > 0) {
             promisedUpdate = this.api.updateLcState(apiUUID, action, lifecycleChecklist);
         } else {
@@ -117,10 +120,19 @@ class LifeCycleUpdate extends Component {
                 }
                 /* TODO: add i18n ~tmkb */
             })
-            .catch((errorResponse) => {
-                console.log(errorResponse);
-                Alert.error(JSON.stringify(errorResponse.message));
-            }).finally(() => {
+            .catch((error) => {
+                if (error.response) {
+                    Alert.error(error.response.body.description);
+                    this.setState({ pageError: error.response.body });
+                } else {
+                    // TODO add i18n ~tmkb
+                    const message = 'Something went wrong while updating the lifecycle';
+                    Alert.error(message);
+                    this.setState({ pageError: error.response.body });
+                }
+                console.error(error);
+            })
+            .finally(() => {
                 this.setState({ isUpdating: null });
             });
     }
@@ -140,7 +152,6 @@ class LifeCycleUpdate extends Component {
         this.updateLCStateOfAPI(apiUUID, action);
     }
 
-
     /**
      * @inheritdoc
      * @memberof LifeCycleUpdate
@@ -150,7 +161,7 @@ class LifeCycleUpdate extends Component {
             api, lcState, classes, theme, handleChangeCheckList, checkList,
         } = this.props;
         const lifecycleStates = [...lcState.availableTransitions];
-        const { newState } = this.state;
+        const { newState, pageError } = this.state;
         const isWorkflowPending = api.workflowStatus && api.workflowStatus === this.WORKFLOW_STATUS.CREATED;
         const lcMap = new Map();
         lcMap.set('Published', 'Publish');
@@ -160,28 +171,38 @@ class LifeCycleUpdate extends Component {
         lcMap.set('Created', 'Create');
         lcMap.set('Retired', 'Retire');
         const isPrototype = api.endpointConfig && api.endpointConfig.implementation_status === 'prototyped';
-        const lifecycleButtons = lifecycleStates
-            .filter(item => item.event !== lcMap.get(lcState.state))
-            .map((item) => {
-                if (item.event === 'Deploy as a Prototype') {
-                    return {
-                        ...item,
-                        disabled: !isPrototype || api.endpointConfig == null,
-                    };
-                }
-                if (item.event === 'Publish') {
-                    return {
-                        ...item,
-                        disabled: api.endpointConfig == null ||
-                            api.policies.length === 0 ||
-                            api.endpointConfig.implementation_status === 'prototyped',
-                    };
+        const lifecycleButtons = lifecycleStates.map((item) => {
+            const state = { ...item, displayName: item.event };
+            if (state.event === 'Deploy as a Prototype') {
+                let { displayName } = state;
+                if (lcState.state === 'Prototyped') {
+                    displayName = 'Redeploy';
                 }
                 return {
-                    ...item,
-                    disabled: false,
+                    ...state,
+                    displayName,
+                    disabled: !isPrototype || api.endpointConfig == null,
                 };
-            });
+            }
+            if (state.event === 'Publish') {
+                let { displayName } = state;
+                if (lcState.state === 'Published') {
+                    displayName = 'Redeploy';
+                }
+                return {
+                    ...state,
+                    displayName,
+                    disabled:
+                        api.endpointConfig == null
+                        || api.policies.length === 0
+                        || api.endpointConfig.implementation_status === 'prototyped',
+                };
+            }
+            return {
+                ...state,
+                disabled: false,
+            };
+        });
         return (
             <Grid container>
                 {isWorkflowPending ? (
@@ -197,8 +218,9 @@ class LifeCycleUpdate extends Component {
                                 <Grid item xs={8}>
                                     <LifeCycleImage lifeCycleStatus={newState || api.lifeCycleStatus} />
                                 </Grid>
-                                {(api.lifeCycleStatus === 'CREATED' || api.lifeCycleStatus === 'PUBLISHED' ||
-                                api.lifeCycleStatus === 'PROTOTYPED') && (
+                                {(api.lifeCycleStatus === 'CREATED'
+                                    || (api.lifeCycleStatus === 'PUBLISHED' && api.type !== 'GRAPHQL')
+                                    || api.lifeCycleStatus === 'PROTOTYPED') && (
                                     <Grid item xs={3}>
                                         <CheckboxLabels api={api} />
                                     </Grid>
@@ -213,14 +235,14 @@ class LifeCycleUpdate extends Component {
                             {checkList.map((checkItem, index) => (
                                 <FormControlLabel
                                     key={checkList[index].value}
-                                    control={
+                                    control={(
                                         <Checkbox
                                             checked={checkList[index].checked}
                                             onChange={handleChangeCheckList(index)}
                                             value={checkList[index].value}
                                             color='primary'
                                         />
-                                    }
+                                    )}
                                     label={checkList[index].label}
                                 />
                             ))}
@@ -228,8 +250,10 @@ class LifeCycleUpdate extends Component {
                     )}
                     <ScopeValidation resourcePath={resourcePath.API_CHANGE_LC} resourceMethod={resourceMethod.POST}>
                         <div className={classes.buttonsWrapper}>
-                            {!isWorkflowPending && (
-                                lifecycleButtons.map((transitionState) => {
+                            {!isWorkflowPending
+                                && lifecycleButtons.map((transitionState) => {
+                                    /* Skip when transitions available for current state ,
+                            this occurs in states where have allowed re-publishing in prototype and published sates */
                                     return (
                                         <Button
                                             disabled={transitionState.disabled || this.state.isUpdating}
@@ -239,18 +263,30 @@ class LifeCycleUpdate extends Component {
                                             data-value={transitionState.event}
                                             onClick={this.updateLifeCycleState}
                                         >
-                                            {transitionState.event}
-                                            {this.state.isUpdating === transitionState.event &&
-                                            <CircularProgress size={18} /> }
+                                            {transitionState.displayName}
+                                            {this.state.isUpdating === transitionState.event && (
+                                                <CircularProgress size={18} />
+                                            )}
                                         </Button>
                                     );
-                                }))
-                            /* Skip when transitions available for current state ,
-                            this occurs in states where have allowed re-publishing in prototype and published sates */
-                            }
+                                })}
                         </div>
                     </ScopeValidation>
                 </Grid>
+                {/* Page error banner */}
+                {pageError && (
+                    <Grid item xs={11}>
+                        <Banner
+                            onClose={() => this.setState({ pageError: null })}
+                            disableActions
+                            dense
+                            paperProps={{ elevation: 1 }}
+                            type='error'
+                            message={pageError}
+                        />
+                    </Grid>
+                )}
+                {/* end of Page error banner */}
             </Grid>
         );
     }
