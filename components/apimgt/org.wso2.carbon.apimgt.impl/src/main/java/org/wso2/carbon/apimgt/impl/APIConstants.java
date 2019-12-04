@@ -479,6 +479,7 @@ public final class APIConstants {
     public static final String BLOCKING_CONDITIONS_STREAM_ID = "org.wso2.blocking.request.stream:1.0.0";
     public static final String TOKEN_REVOCATION_STREAM_ID = "org.wso2.apimgt.token.revocation.stream:1.0.0";
     public static final String KEY_TEMPLATE_STREM_ID = "org.wso2.keytemplate.request.stream:1.0.0";
+    public static final String CACHE_INVALIDATION_STREAM_ID = "org.wso2.apimgt.cache.invalidation.stream:1.0.0";
 
     //Property for enabling scope sharing between APIs
     public static final String ENABLE_API_SCOPES_SHARING = "enable-api-scopes-sharing";
@@ -492,6 +493,7 @@ public final class APIConstants {
     public static final String TOKEN_TYPE_JWT = "JWT";
 
     public static final String PASSWORD_RESOLVER_IMPL_CLASS = "PasswordResolverImpl";
+    public static final String CACHE_INVALIDATION_TYPE = "type";
 
     public static class TokenStatus {
         public static final String ACTIVE = "ACTIVE";
@@ -823,6 +825,7 @@ public final class APIConstants {
     public static final String UNAUTHENTICATED_TIER = "Unauthenticated";
     public static final String BLOCKING_EVENT_PUBLISHER = "blockingEventPublisher";
     public static final String TOKEN_REVOCATION_EVENT_PUBLISHER = "tokenRevocationPublisher";
+    public static final String CACHE_INVALIDATION_EVENT_PUBLISHER = "cacheInvalidationEventPublisher";
 
     public static final int AM_CREATOR_APIMGT_EXECUTION_ID = 200;
     public static final int AM_CREATOR_GOVERNANCE_EXECUTION_ID = 201;
@@ -1180,6 +1183,7 @@ public final class APIConstants {
     public static final String CUSTOM_ERROR_MESSAGE = "ERROR_MESSAGE";
     //Swagger v2.0 constants
     public static final String SWAGGER_X_SCOPE = "x-scope";
+    public static final String SWAGGER_X_AMZN_RESOURCE_NAME = "x-amzn-resource-name";
     public static final String SWAGGER_X_AUTH_TYPE = "x-auth-type";
     public static final String SWAGGER_X_THROTTLING_TIER = "x-throttling-tier";
     public static final String SWAGGER_X_MEDIATION_SCRIPT = "x-mediation-script";
@@ -1283,6 +1287,7 @@ public final class APIConstants {
     public static final String ENDPOINT_CONFIG = "endpoint_config";
     public static final String ENDPOINT_TYPE_HTTP = "http";
     public static final String ENDPOINT_TYPE_ADDRESS = "address";
+    public static final String ENDPOINT_TYPE_AWSLAMBDA = "awslambda";
     public static final String ENDPOINT_PRODUCTION_FAILOVERS = "production_failovers";
     public static final String ENDPOINT_SANDBOX_FAILOVERS = "sandbox_failovers";
     public static final String ENDPOINT_PRODUCTION_ENDPOINTS = "production_endpoints";
@@ -1830,5 +1835,12 @@ public final class APIConstants {
     public static final String API_KEY_REVOKE_PATH = "/apikey/revoke";
 
     public static final String SKIP_ROLES_BY_REGEX = "skipRolesByRegex";
+
+    // AWS Lambda: Constants for aws lambda
+    public static final String AWS_SECRET_KEY = "AWS_SECRET_KEY";
+    public static final int AWS_ENCRYPTED_SECRET_KEY_LENGTH = 620;
+    public static final String AMZN_ACCESS_KEY = "amznAccessKey";
+    public static final String AMZN_SECRET_KEY = "amznSecretKey";
+    public static final String NO_ENTITY_BODY = "NO_ENTITY_BODY";
 
 }

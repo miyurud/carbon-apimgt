@@ -189,7 +189,6 @@ import javax.xml.stream.XMLStreamException;
 
 import static org.wso2.carbon.apimgt.impl.utils.APIUtil.handleException;
 import static org.wso2.carbon.apimgt.impl.utils.APIUtil.isAllowDisplayAPIsWithMultipleStatus;
-import static org.wso2.carbon.apimgt.impl.utils.APIUtil.retrieveSavedEmailList;
 
 /**
  * This class provides the core API provider functionality. It is implemented in a very
@@ -1266,29 +1265,13 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
             if (gatewayExists && isAPIPublished && !oldApi.getUriTemplates().equals(api.getUriTemplates())) {
                 Set<URITemplate> resourceVerbs = api.getUriTemplates();
 
-                Map<String, Environment> gatewayEns = config.getApiGatewayEnvironments();
-                for (Environment environment : gatewayEns.values()) {
-                    try {
-                        if (resourceVerbs != null) {
-                            for (URITemplate resourceVerb : resourceVerbs) {
-                                String resourceURLContext = resourceVerb.getUriTemplate();
-                                invalidateResourceCache(api.getContext(), api.getId().getVersion(),
-                                        resourceURLContext, resourceVerb.getHTTPVerb(), environment);
-                                if (log.isDebugEnabled()) {
-                                    log.debug("Calling invalidation cache");
-                                }
+
+                    if (resourceVerbs != null) {
+                            invalidateResourceCache(api.getContext(), api.getId().getVersion(),resourceVerbs);
+                            if (log.isDebugEnabled()) {
+                                log.debug("Calling invalidation cache");
                             }
-                        }
-                    } catch (AxisFault ex) {
-                             /*
-                            didn't throw this exception to handle multiple gateway publishing feature therefore
-                            this didn't break invalidating cache from the all the gateways if one gateway is
-                            unreachable
-                             */
-                        log.error("Error while invalidating from environment " +
-                                environment.getName(), ex);
                     }
-                }
 
             }
 
@@ -1932,7 +1915,7 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
         }
 
         APIGatewayManager gatewayManager = APIGatewayManager.getInstance();
-        gatewayManager.setProductResourceSequences(this, apiProduct, tenantDomain);
+        gatewayManager.setProductResourceSequences(this, apiProduct);
 
         try {
             builder = getAPITemplateBuilder(apiProduct);
@@ -2244,11 +2227,13 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
 
     private Map<String, String> removeFromGateway(APIProduct apiProduct) throws APIManagementException {
         String tenantDomain = null;
+
         if (apiProduct.getId().getProviderName().contains("AT")) {
             String provider = apiProduct.getId().getProviderName().replace("-AT-", "@");
             tenantDomain = MultitenantUtils.getTenantDomain(provider);
+        } else {
+            tenantDomain = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantDomain();
         }
-
         Map<String, String> failedEnvironment = removeFromGateway(apiProduct, tenantDomain);
         if (log.isDebugEnabled()) {
             String logMessage = "API Name: " + apiProduct.getId().getName() + ", API Version " + apiProduct.getId().getVersion()
@@ -3233,6 +3218,7 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
                 String filePath = docFilePath.substring(startIndex, docFilePath.length());
                 APIUtil.setResourcePermissions(api.getId().getProviderName(), visibility, authorizedRoles, filePath,
                         registry);
+                registry.addAssociation(artifact.getPath(), filePath, APIConstants.DOCUMENTATION_FILE_ASSOCIATION);
             }
 
         } catch (RegistryException e) {
@@ -5714,25 +5700,12 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
                 policyLevel = PolicyConstants.POLICY_LEVEL_API;
 
                 APIManagerConfiguration config = getAPIManagerConfiguration();
-                Map<String, Environment> gatewayEns = config.getApiGatewayEnvironments();
-                for (Environment environment : gatewayEns.values()) {
-                    try {
-                        if (log.isDebugEnabled()) {
-                            log.debug("Calling invalidation cache for API Policy for tenant ");
-                        }
-                        String policyContext = APIConstants.POLICY_CACHE_CONTEXT + "/t/" + apiPolicy.getTenantDomain()
-                                + "/";
-                        invalidateResourceCache(policyContext, null, null, null, environment);
-
-                    } catch (AxisFault ex) {
-                        /*
-                         * didn't throw this exception to handle multiple gateway publishing feature therefore
-                         * this didn't break invalidating cache from the all the gateways if one gateway is
-                         * unreachable
-                         */
-                        log.error("Error while invalidating from environment " + environment.getName(), ex);
+                if (log.isDebugEnabled()) {
+                        log.debug("Calling invalidation cache for API Policy for tenant ");
                     }
-                }
+                    String policyContext = APIConstants.POLICY_CACHE_CONTEXT + "/t/" + apiPolicy.getTenantDomain()
+                            + "/";
+                    invalidateResourceCache(policyContext, null, Collections.EMPTY_SET);
             } else if (policy instanceof ApplicationPolicy) {
                 ApplicationPolicy appPolicy = (ApplicationPolicy) policy;
                 String policyString = policyBuilder.getThrottlePolicyForAppLevel(appPolicy);
@@ -6476,10 +6449,9 @@ class APIProviderImpl extends AbstractAPIManager implements APIProvider {
 
     }
 
-    protected void invalidateResourceCache(String apiContext, String apiVersion, String resourceURLContext,
-                                           String httpVerb, Environment environment) throws AxisFault {
-        APIAuthenticationAdminClient client = new APIAuthenticationAdminClient(environment);
-        client.invalidateResourceCache(apiContext, apiVersion, resourceURLContext, httpVerb);
+    protected void invalidateResourceCache(String apiContext, String apiVersion,Set<URITemplate> uriTemplates) {
+        APIAuthenticationAdminClient client = new APIAuthenticationAdminClient();
+        client.invalidateResourceCache(apiContext, apiVersion, uriTemplates);
     }
 
     protected ThrottlePolicyTemplateBuilder getThrottlePolicyTemplateBuilder() {

@@ -1592,7 +1592,6 @@ class API extends Resource {
             });
             params.query = query;
         }
-        console.log(params);
         const apiClient = new APIClientFactory().getAPIClient(Utils.getCurrentEnvironment()).client;
         const promisedAPIs = apiClient.then(client => {
             return client.apis['APIs'].get_apis(params, Resource._requestMetaData());
@@ -2185,6 +2184,24 @@ class API extends Resource {
                 {
                     alertType: alertType,
                     configurationId: configId,
+                },
+                this._requestMetaData(),
+            );
+        });
+    }
+
+    /**
+     * Get ARNs of an user role
+     * @param id {string} UUID of the api product.
+     * @param callback {function} A callback function to invoke after receiving successful response.
+     * @returns {promise} With given callback attached to the success chain else API invoke promise.
+     */
+    static getAmznResourceNames(id) {
+        const apiClient = new APIClientFactory().getAPIClient(Utils.getCurrentEnvironment()).client;
+        return apiClient.then(client => {
+            return client.apis['AWS Lambda (Individual)'].get_apis__apiId__amznResourceNames(
+                {
+                    apiId: id,
                 },
                 this._requestMetaData(),
             );
