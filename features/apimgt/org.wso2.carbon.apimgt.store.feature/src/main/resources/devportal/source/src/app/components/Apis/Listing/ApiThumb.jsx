@@ -245,10 +245,11 @@ class ApiThumb extends React.Component {
         const path = this.getPathPrefix();
         const { isMonetizationEnabled } = this.context;
 
-        const detailsLink = path + this.props.api.id;
         const {
             api, classes, theme, customWidth, customHeight, showInfo,
         } = this.props;
+        const detailsLink = api.type === "BLOCKCHAIN|HTTP" ? "" : path + this.props.api.id;
+
         const { thumbnail } = theme.custom;
         const { name, version, context } = api;
 
@@ -386,6 +387,12 @@ class ApiThumb extends React.Component {
                                             color='primary'
                                         />
                                     )}
+                                    {(api.type === 'BLOCKCHAIN|HTTP') && (
+                                                                            <Chip
+                                                                                label={"Remote"}
+                                                                                color='primary'
+                                                                            />
+                                                          )}
                                 </Typography>
                             </div>
                         </div>

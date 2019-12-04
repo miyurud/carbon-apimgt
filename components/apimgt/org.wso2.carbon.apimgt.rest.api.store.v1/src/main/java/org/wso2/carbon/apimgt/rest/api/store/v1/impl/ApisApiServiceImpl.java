@@ -122,6 +122,16 @@ public class ApisApiServiceImpl implements ApisApiService {
             Map allMatchedApisMap = apiConsumer
                     .searchPaginatedAPIs(newSearchQuery, requestedTenantDomain, offset, limit, false);
             Set<Object> sortedSet = (Set<Object>) allMatchedApisMap.get("apis"); // This is a SortedSet
+
+            //-----------------------
+            API api = new API(new APIIdentifier("kkkkkk", "vvvvvvvv", "2"));
+            String context = "cccccccc";
+            api.setContextTemplate(context + "/{version}");
+            api.setType("BLOCKCHAIN|HTTP");
+            sortedSet.add(api);
+            //-----------------------
+
+
             ArrayList<Object> allMatchedApis = new ArrayList<>(sortedSet);
 
             apiListDTO = APIMappingUtil.fromAPIListToDTO(allMatchedApis);
