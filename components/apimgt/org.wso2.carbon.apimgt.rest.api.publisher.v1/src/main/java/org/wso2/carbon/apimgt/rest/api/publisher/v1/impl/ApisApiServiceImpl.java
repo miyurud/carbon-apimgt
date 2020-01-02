@@ -295,7 +295,7 @@ public class ApisApiServiceImpl implements ApisApiService {
         APIDTO createdApiDTO;
         try {
             APIProvider apiProvider = RestApiUtil.getLoggedInUserProvider();
-            boolean isWSAPI = APIDTO.TypeEnum.WS == body.getType();
+            boolean isWSAPI = "WS".equals(body.getType());
 
             // validate web socket api endpoint configurations
             if (isWSAPI && !RestApiPublisherUtils.isValidWSAPI(body)) {
@@ -655,7 +655,7 @@ public class ApisApiServiceImpl implements ApisApiService {
             body.setProvider(apiIdentifier.getProviderName());
             body.setContext(originalAPI.getContextTemplate());
             body.setLifeCycleStatus(originalAPI.getStatus());
-            body.setType(APIDTO.TypeEnum.fromValue(originalAPI.getType()));
+            body.setType(originalAPI.getType());
 
             List<APIResource> removedProductResources = getRemovedProductResources(body, originalAPI);
 
@@ -3182,7 +3182,7 @@ public class ApisApiServiceImpl implements ApisApiService {
         }
 
         // Only HTTP type APIs should be allowed
-        if (!APIDTO.TypeEnum.HTTP.equals(apiDTOFromProperties.getType())) {
+        if (!"HTTP".equals(apiDTOFromProperties.getType())) {
             throw RestApiUtil.buildBadRequestException("The API's type should only be HTTP when " +
                     "importing an OpenAPI definition");
         }
@@ -3324,11 +3324,11 @@ public class ApisApiServiceImpl implements ApisApiService {
             validateWSDLAndReset(fileInputStream, fileDetail, url);
 
             if (StringUtils.isEmpty(implementationType)) {
-                implementationType = APIDTO.TypeEnum.SOAP.toString();
+                implementationType = "SOAP";
             }
 
-            boolean isSoapToRestConvertedAPI = APIDTO.TypeEnum.SOAPTOREST.toString().equals(implementationType);
-            boolean isSoapAPI = APIDTO.TypeEnum.SOAP.toString().equals(implementationType);
+            boolean isSoapToRestConvertedAPI = "SOAPTOREST".equals(implementationType);
+            boolean isSoapAPI = "SOAP".equals(implementationType);
 
             APIProvider apiProvider = RestApiUtil.getLoggedInUserProvider();
             APIDTO additionalPropertiesAPI = null;
@@ -3338,7 +3338,7 @@ public class ApisApiServiceImpl implements ApisApiService {
             // Minimum requirement name, version, context and endpointConfig.
             additionalPropertiesAPI = new ObjectMapper().readValue(additionalProperties, APIDTO.class);
             additionalPropertiesAPI.setProvider(RestApiUtil.getLoggedInUsername());
-            additionalPropertiesAPI.setType(APIDTO.TypeEnum.fromValue(implementationType));
+            additionalPropertiesAPI.setType(implementationType);
             API apiToAdd = prepareToCreateAPIByDTO(additionalPropertiesAPI);
             apiToAdd.setWsdlUrl(url);
             API createdApi = null;
@@ -3685,7 +3685,7 @@ public class ApisApiServiceImpl implements ApisApiService {
             }
 
             additionalPropertiesAPI = new ObjectMapper().readValue(additionalProperties, APIDTO.class);
-            additionalPropertiesAPI.setType(APIDTO.TypeEnum.GRAPHQL);
+            additionalPropertiesAPI.setType("GRAPHQL");
             APIProvider apiProvider = RestApiUtil.getLoggedInUserProvider();
             API apiToAdd = prepareToCreateAPIByDTO(additionalPropertiesAPI);
 

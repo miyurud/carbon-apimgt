@@ -787,7 +787,7 @@ public class APIMappingUtil {
         }
 
         //Get Swagger definition which has URL templates, scopes and resource details
-        if (!APIDTO.TypeEnum.WS.toString().equals(model.getType())) {
+        if (!"WS".equals(model.getType())) {
             List<APIOperationsDTO> apiOperationsDTO;
             String apiSwaggerDefinition = apiProvider.getOpenAPIDefinition(model.getId());
             apiOperationsDTO = getOperationsFromAPI(model);
@@ -810,9 +810,9 @@ public class APIMappingUtil {
 
         //APIs created with type set to "NULL" will be considered as "HTTP"
         if (model.getType() == null || model.getType().toLowerCase().equals("null")) {
-            dto.setType(APIDTO.TypeEnum.HTTP);
+            dto.setType("HTTP");
         } else {
-            dto.setType(APIDTO.TypeEnum.fromValue(model.getType()));
+            dto.setType(model.getType());
         }
 
         if (!APIConstants.APITransportType.WS.toString().equals(model.getType())) {

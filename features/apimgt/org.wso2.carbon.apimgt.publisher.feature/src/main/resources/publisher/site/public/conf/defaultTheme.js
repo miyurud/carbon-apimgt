@@ -18,6 +18,9 @@ const AppThemes = {
                 // dark: will be calculated from palette.secondary.main,
                 contrastText: '#ffcc00',
             },
+            blk: {
+                main: '#e6005c'
+            },
             background: {
                 default: '#f6f6f6',
                 paper: '#ffffff',

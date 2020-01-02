@@ -6855,12 +6855,6 @@ definitions:
       type:
         type: string
         description: The api creation type to be used. Accepted values are HTTP, WS, SOAPTOREST, GRAPHQL
-        enum:
-          - HTTP
-          - WS
-          - SOAPTOREST
-          - SOAP
-          - GRAPHQL
         example: HTTP
         default: HTTP
       transport:

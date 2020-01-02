@@ -1464,7 +1464,7 @@ public final class APIConstants {
     public static final String API_PRODUCT_VERSION = "1.0.0";
     public static final String API_IDENTIFIER_TYPE = "API";
     public static final String API_PRODUCT_IDENTIFIER_TYPE = "API Product";
-    public static final String[] API_SUPPORTED_TYPE_LIST = {"HTTP", "WS" , "SOAPTOREST", "GRAPHQL", "SOAP"};
+    public static final String[] API_SUPPORTED_TYPE_LIST = {"BLK_HTTP", "HTTP", "WS" , "SOAPTOREST", "GRAPHQL", "SOAP"};
 
     public static class AdvancedThrottleConstants {
         public static final String THROTTLING_CONFIGURATIONS = "ThrottlingConfigurations";
@@ -1843,4 +1843,8 @@ public final class APIConstants {
     public static final String AMZN_SECRET_KEY = "amznSecretKey";
     public static final String NO_ENTITY_BODY = "NO_ENTITY_BODY";
 
+    //Decentralized marketplace related constants
+    public static final String BLK_ETH_ACCOUNT = "BlockchainEthereumAccount";
+    public static final String BLK_ETH_PASS = "BlockchainRPCAPIPass";
+    public static final String BLK_RPC_API_URL = "BlockchainRPCAPIUrl";
 }

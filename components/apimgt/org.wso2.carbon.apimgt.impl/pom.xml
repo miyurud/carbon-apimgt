@@ -352,6 +352,11 @@
             <artifactId>graphQL</artifactId>
             <version>${graphql.java.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.wso2.blockchain</groupId>
+            <artifactId>APIMarketplaceConnector</artifactId>
+            <version>1.0.0</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

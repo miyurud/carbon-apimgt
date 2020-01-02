@@ -296,6 +296,14 @@ class APIThumb extends Component {
                             color='primary'
                         />
                     )}
+                    {(api.type === 'BLK_HTTP' || api.transportType === 'BLK_HTTP') && (
+                        <Chip
+                            className={classes.thumbRightBy}
+                            label={api.transportType === undefined
+                                ? api.type : api.transportType}
+                            color='#e6005c'
+                        />
+                    )}
                     <DeleteApiButton onClick={this.handleApiDelete} api={api} />
                     {loading && <CircularProgress className={classes.deleteProgress} />}
                 </CardActions>
